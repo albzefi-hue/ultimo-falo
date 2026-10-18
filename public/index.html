@@ -525,7 +525,7 @@ function getAction() {
   if (pp && gi) return { label: `Regala 1 ${ITEMS[gi].n.toLowerCase()} a ${nameOf(pp)}`, cd: 0.8, run: () => giveGift(pp) };
   const farm = farmAction(); if (farm) return farm;
   const sh = nearest(shelters.concat(builds.filter(b => b.t === 'casa'), Net.remoteBuilds.filter(b => b.t === 'casa' || b.t === 'rifugio')), S, 80);
-  if (sh && isNight()) return { label: 'Dormi fino all’alba', target: sh, cd: 1, run: sleep };
+  if (sh && isNight()) return { label: S.community && Net.room ? 'Riposa al sicuro' : 'Dormi fino all’alba', target: sh, cd: 1, run: sleep };
   if (nearWater()) return { label: 'Bevi', cd: 0.6, run: drink };
   if (fire && S.inv.legna > 0 && fire.life < FIRE_MAX - 20) return { label: 'Ravviva il fuoco', target: fire, cd: 0.6, run: () => { S.inv.legna--; fire.life = Math.min(FIRE_MAX, fire.life + 45); floatTxt(fire.x, fire.y - 30, '+45 s di fuoco', '#ffb27a'); } };
   return null;
@@ -565,6 +565,14 @@ function cook() {
 }
 function drink() { S.water = Math.min(100, S.water + 25); S.c.drink++; floatTxt(S.x, S.y - 40, '+25 sete', '#7fd0ef'); }
 function sleep() {
+  if (S.community && Net.room) {
+    // nel bosco della comunità la notte è uguale per tutti: si riposa, ma il tempo non salta
+    S.food = Math.max(0, S.food - 8); S.water = Math.max(0, S.water - 8);
+    S.hp = Math.min(S.maxHp, S.hp + 25); S.warm = 100;
+    animals = animals.filter(a => a.k !== 'wolf' || dist(a, S) > 450);
+    toast('Hai riposato al sicuro e ti senti meglio. Qui la notte è uguale per tutti: il sole sorge all’ora del bosco.');
+    return;
+  }
   const d = Math.floor(S.time / DAY);
   S.time = (d + 1) * DAY;
   S.food = Math.max(0, S.food - 20); S.water = Math.max(0, S.water - 20);
@@ -1902,7 +1910,7 @@ async function joinForest() {
   } catch (e) { if (e && e.code === 'not_permitted') Net.joinFailed = true; }
   finally { Net.joining = false; }
 }
-function leaveForest() { if (Net.room) { Net.room.leave().catch(() => {}); Net.room = null; Net.peers = []; Net.fires = []; Net.remoteBuilds = []; Net.remotePets = []; solidCache = solids(); } }
+function leaveForest() { if (Net.room) { Net.room.leave().catch(() => {}); Net.room = null; Net.serverOffset = undefined; G.clockToast = false; Net.peers = []; Net.fires = []; Net.remoteBuilds = []; Net.remotePets = []; solidCache = solids(); } }
 const VILLAGE_KINDS = ['casa', 'recinto', 'orto', 'pozzo', 'lanterna', 'trappola', 'pollaio', 'ovile', 'stalla', 'cuccia', 'rifugio'];
 // Il villaggio di ognuno sta sul server: lo vede anche chi entra dopo. Il proprio resta nel salvataggio.
 function shareBuilds() {
@@ -1947,6 +1955,18 @@ function netTick(dt) {
       rp.push({ k: PET_KIND[q[0]], x: clamp(q[1], 0, WPX), y: clamp(q[2], 0, WPX), ready: false, vx: 0, vy: 0, hop: G.time * 3 + q[1] });
   }
   Net.remotePets = rp;
+  // ora del bosco uguale per tutti: allinea l'ora del giorno all'orologio del server, senza mai tornare al giorno prima
+  G.clockT = (G.clockT || 0) - dt;
+  if (isNum(Net.serverOffset) && G.clockT <= 0 && !S.dead) {
+    G.clockT = 1;
+    const world = ((((Date.now() + Net.serverOffset) / 1000) % DAY) + DAY) % DAY, phase = S.time % DAY;
+    let diff = (((world - phase) % DAY) + DAY * 1.5) % DAY - DAY / 2;
+    if (Math.abs(diff) > 0.5) {
+      if (phase + diff < 0) diff += DAY;
+      S.time += diff;
+      if (Math.abs(diff) > 10 && !G.clockToast) { G.clockToast = true; toast('Ora sincronizzata: nel bosco della comunità giorno e notte sono uguali per tutti.'); }
+    }
+  }
   G.netT = (G.netT || 0) + dt;
   if (G.netT < 0.12) return;
   G.netT = 0;
@@ -2023,7 +2043,7 @@ function drawCommunity() {
   let forest;
   if (S.community) {
     forest = Net.room && Net.room.connected()
-      ? `<div class="slot"><h4>Sei nel bosco della comunità</h4><div class="meta">${peers.length ? `Qui ora ${peers.length === 1 ? 'c’è 1 altro esploratore' : `ci sono ${peers.length} esploratori`}. Avvicinati a qualcuno per regalargli cibo o legna con il pulsante arancione, e scaldatevi allo stesso falò.` : 'Per ora sei da solo. Quando arriva qualcuno lo vedi nel bosco con la giacca blu e il suo nome sopra la testa.'}</div>
+      ? `<div class="slot"><h4>Sei nel bosco della comunità</h4><div class="meta">${peers.length ? `Qui ora ${peers.length === 1 ? 'c’è 1 altro esploratore' : `ci sono ${peers.length} esploratori`}. Avvicinati a qualcuno per regalargli cibo o legna con il pulsante arancione, e scaldatevi allo stesso falò. L’ora del bosco è uguale per tutti.` : 'L’ora del bosco è uguale per tutti. Per ora sei da solo. Quando arriva qualcuno lo vedi nel bosco con la giacca blu e il suo nome sopra la testa.'}</div>
         ${peers.length ? `<ul class="people">${peers.map(p => { const pr = p.presence || {}; return `<li><b>${esc(nameOf(p))}</b><span>${pr.dead ? 'è caduto' : `giorno ${isNum(pr.d) ? pr.d : '?'} · liv. ${isNum(pr.lv) ? pr.lv : '?'}`}${isNum(pr.x) && isNum(pr.y) ? ` · a ${Math.round(Math.hypot(pr.x - S.x, pr.y - S.y) / T)} passi da te` : ''}</span></li>`; }).join('')}</ul>` : ''}</div>`
       : `<div class="slot"><h4>Bosco della comunità</h4><div class="meta">${Net.joinFailed || !Net.lobby ? 'In questa vista non riesco a collegarti agli altri. Apri il gioco da claude.ai con il tuo account: per giocare insieme il gioco deve esserti stato condiviso.' : 'Mi sto collegando agli altri esploratori…'}</div></div>`;
   } else {
@@ -2132,7 +2152,7 @@ function makeWebLobby() {
       const events = queue.splice(0, 5);
       try {
         const j = await api('sync', { id: myId, owner: S && S.owner, nick: myNick(), pres: pres ? { ...pres, g: gone.map(g => g.id) } : null, events, since, bv: villageV });
-        conn = true; since = j.now - 8000;
+        conn = true; since = j.now - 8000; Net.serverOffset = j.now - Date.now();
         applyPeers(j.peers || []);
         if (j.builds) { villageV = j.bv; fire('village', { topic: 'village', data: j.builds }); }
         for (const e of j.events || []) {
