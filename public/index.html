@@ -1268,7 +1268,7 @@ const endJoy = e => { if (G.joy && e.pointerId === G.joy.id) { G.joy = null; $('
 cv.addEventListener('pointerup', endJoy); cv.addEventListener('pointercancel', endJoy);
 cv.addEventListener('contextmenu', e => e.preventDefault());
 const ab = $('actBtn');
-ab.addEventListener('pointerdown', e => { e.preventDefault(); G.act = true; ab.classList.add('down'); });
+ab.addEventListener('pointerdown', e => { e.preventDefault(); G.act = true; G.tap = true; ab.classList.add('down'); });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => ab.addEventListener(ev, () => { G.act = false; ab.classList.remove('down'); }));
 let fSpace = false;
 window.addEventListener('keydown', e => {
@@ -1286,7 +1286,7 @@ window.addEventListener('keydown', e => {
   }
   const k = e.key.toLowerCase();
   if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { G.keys.add(k); e.preventDefault(); $('joyHint').hidden = true; }
-  if (k === 'e' || k === ' ') { G.act = true; e.preventDefault(); }
+  if (k === 'e' || k === ' ') { if (!e.repeat) G.tap = true; G.act = true; e.preventDefault(); }
   if (k === 'c' && !G.paused) openSheet();
   if (k === 'm' && !G.sheet && !G.modal) { G.mapOpen ? closeMap() : openMap(); }
   if (k === 'escape' && G.mapOpen) closeMap();
@@ -1317,7 +1317,8 @@ function update(dt) {
   // azione
   G.cd -= dt; G.swing = Math.max(0, G.swing - dt);
   G.action = getAction();
-  if (G.act && G.action && G.cd <= 0) { G.cd = G.action.cd; if (G.action.target) S.face = Math.atan2(G.action.target.y - S.y, G.action.target.x - S.x); G.action.run(); renderPack(); }
+  // G.tap ricorda anche un tocco più breve di un fotogramma
+  if ((G.act || G.tap) && G.action && G.cd <= 0) { G.tap = false; G.cd = G.action.cd; if (G.action.target) S.face = Math.atan2(G.action.target.y - S.y, G.action.target.x - S.x); G.action.run(); renderPack(); }
   // bisogni
   const nearFire = allFires().some(f => dist(f, S) < 150) || builds.concat(Net.remoteBuilds).some(b => b.t === 'casa' && dist(b, S) < 85), nearShelter = shelters.some(s => dist(s, S) < 80);
   S.food -= dt * 100 / 230;
