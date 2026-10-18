@@ -119,6 +119,16 @@ button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
 .item.eat{border-color:#5e6f35;background:#223520}
 .item.eat::after{content:"mangia";font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--xp)}
 .item.zero{opacity:.35}
+.mapview{position:absolute;inset:0;z-index:7;background:rgba(10,18,13,.96);display:flex;flex-direction:column}
+.map-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px 8px}
+.map-head h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:24px}
+.map-box{flex:1;min-height:0;display:grid;place-items:center;padding-block:4px}
+#mapCv{border-radius:12px;border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.4);touch-action:none}
+.map-info{padding-block:8px 14px;display:grid;gap:8px}
+.map-info p{margin:0;color:var(--birch);font-weight:700;font-size:14px}
+.map-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;font-weight:700;color:var(--lichen)}
+.map-legend span{display:inline-flex;align-items:center;gap:6px}
+.map-legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
 .fish-btn{position:absolute;right:max(26px,calc(env(safe-area-inset-right,0px) + 26px));bottom:142px;width:64px;height:64px;border-radius:50%;border:3px solid #9fd8ec;background:radial-gradient(circle at 40% 35%,#7fd0ef,#3b8fb5 60%,#22607a);color:#fff;font-family:var(--f-display);font-size:14px;box-shadow:0 4px 0 #173f50,0 8px 20px rgba(0,0,0,.35)}
 .fish-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #173f50}
 .fishing{position:absolute;inset:0;z-index:7;background:#0b2229;overflow:hidden}
@@ -206,6 +216,18 @@ p.meta{margin:0;color:var(--lichen);font-size:14px}
     <div class="joy-hint" id="joyHint">Trascina a sinistra per muoverti · Tastiera: WASD e E</div>
     <div class="act"><button class="act-btn idle" id="actBtn" type="button">Usa</button><span class="act-label" id="actLabel">Niente qui vicino</span></div>
     <button class="fish-btn" id="fishBtn" type="button" hidden>Pesca</button>
+    <section class="mapview" id="mapView" hidden>
+      <div class="map-head gut"><h2>Mappa del bosco</h2><button class="btn ghost" id="mapClose" type="button">Chiudi</button></div>
+      <div class="map-box gut" id="mapBox"><canvas id="mapCv" aria-label="Mappa del bosco"></canvas></div>
+      <div class="map-info gut">
+        <p id="mapNote"></p>
+        <div class="map-legend">
+          <span><i style="background:#ff8a3d"></i>Tu</span><span><i style="background:#4fa3e8"></i>Altri giocatori</span>
+          <span><i style="background:#9a6a3c"></i>Le tue costruzioni</span><span><i style="background:#9a6a3c;outline:2px solid #4fa3e8"></i>Villaggi degli altri</span>
+          <span><i style="background:#ffb000;border-radius:50%"></i>Falò</span><span><i style="background:#1f566a"></i>Acqua</span><span><i style="background:#163a22;border-radius:50%"></i>Alberi</span>
+        </div>
+      </div>
+    </section>
     <section class="fishing" id="fishing" hidden>
       <canvas id="fcv" aria-label="Il lago: tieni premuto per lanciare"></canvas>
       <div class="f-top"><b>Pesca al lago</b><button class="btn ghost" id="fClose" type="button">Torna a riva</button></div>
@@ -955,6 +977,87 @@ $('fClose').addEventListener('click', closeFishing);
 $('fOk').addEventListener('click', () => { $('fCard').hidden = true; F.state = 'idle'; fishUI(); renderPack(); });
 $('fishBtn').addEventListener('click', openFishing);
 
+/* ---------- Mappa del bosco ---------- */
+const mapLayer = document.createElement('canvas');
+const COMPASS = ['est', 'sud-est', 'sud', 'sud-ovest', 'ovest', 'nord-ovest', 'nord', 'nord-est'];
+const compass = (dx, dy) => COMPASS[((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) % 8) + 8) % 8];
+function openMap() {
+  if (S.dead) return;
+  G.mapOpen = true; G.act = false; G.joy = null; $('joy').hidden = true;
+  $('mapView').hidden = false; G.mapSize = 0; drawMap();
+  // acqua più vicina, a passi (una casella = un passo)
+  let best = null, bd = 1e9;
+  const px = Math.floor(S.x / T), py = Math.floor(S.y / T);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (ground[y * N + x] === 1) { const d = Math.hypot(x - px, y - py); if (d < bd) { bd = d; best = { x, y }; } }
+  $('mapNote').textContent = !best ? 'Non c’è acqua in questo bosco.' : bd < 1.5 ? `Sei sulla riva: l’acqua è qui. Giorno ${day()}.` : `Acqua più vicina: ${Math.round(bd)} passi a ${compass(best.x - px, best.y - py)}. Giorno ${day()}.`;
+}
+function closeMap() { G.mapOpen = false; $('mapView').hidden = true; }
+$('mapClose').addEventListener('click', closeMap);
+function renderMapLayer(size) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  mapLayer.width = mapLayer.height = Math.round(size * dpr);
+  const c = mapLayer.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const ts = size / N, k = size / WPX;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const w = ground[y * N + x] === 1, h = hash(x, y);
+    c.fillStyle = w ? '#1f566a' : ['#2a4a30', '#2d5034', '#27452d'][Math.floor(h * 3)];
+    c.fillRect(x * ts, y * ts, ts + 0.6, ts + 0.6);
+  }
+  for (const o of objects) {
+    if (o.k === 'tree') { c.fillStyle = '#163a22'; c.beginPath(); c.arc(o.x * k, o.y * k, Math.max(1.3, ts * 0.33), 0, 6.28); c.fill(); }
+    else if (o.k === 'rock') { c.fillStyle = '#9aa3a8'; c.fillRect(o.x * k - 1.5, o.y * k - 1.5, 3, 3); }
+    else if (o.k === 'bush') { c.fillStyle = '#c0394f'; c.beginPath(); c.arc(o.x * k, o.y * k, 1.4, 0, 6.28); c.fill(); }
+  }
+}
+function drawMap() {
+  const box = $('mapBox').getBoundingClientRect();
+  const size = Math.max(160, Math.floor(Math.min(box.width - 32, box.height - 8)));
+  const cvm = $('mapCv'), dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (G.mapSize !== size || G.mapObjs !== objects.length) {
+    G.mapSize = size; G.mapObjs = objects.length;
+    cvm.style.width = cvm.style.height = size + 'px'; cvm.width = cvm.height = Math.round(size * dpr);
+    renderMapLayer(size);
+  }
+  const c = cvm.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(mapLayer, 0, 0); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const k = size / WPX, t = performance.now() / 1000;
+  c.font = '700 10px "Barlow Semi Condensed", sans-serif'; c.textAlign = 'center';
+  // recinti
+  c.strokeStyle = '#b08458'; c.lineWidth = 1.5;
+  for (const g of fenceSegs) { c.beginPath(); c.moveTo(g.x1 * k, g.y1 * k); c.lineTo(g.x2 * k, g.y2 * k); c.stroke(); }
+  // costruzioni
+  const mark = (b, remote) => {
+    if (b.t === 'recinto') return;
+    const big = b.t === 'casa' || b.t === 'stalla' || b.t === 'rifugio', r = big ? 4.5 : 3;
+    c.fillStyle = { casa: '#9a6a3c', stalla: '#9b3d2e', pollaio: '#a0522d', ovile: '#8b6b4a', orto: '#6a8a3a', pozzo: '#8f979c', lanterna: '#ffd36a', trappola: '#7a5434', cuccia: '#8a6440', rifugio: '#6b4a2e' }[b.t] || '#9a6a3c';
+    c.fillRect(b.x * k - r, b.y * k - r, r * 2, r * 2);
+    if (remote) { c.strokeStyle = '#4fa3e8'; c.lineWidth = 1.5; c.strokeRect(b.x * k - r - 1, b.y * k - r - 1, r * 2 + 2, r * 2 + 2); }
+  };
+  for (const b of builds) mark(b, false);
+  for (const s of shelters) mark({ t: 'rifugio', x: s.x, y: s.y }, false);
+  for (const b of Net.remoteBuilds) mark(b, true);
+  for (const b of Net.remoteBuilds) if (b.t === 'casa') { c.fillStyle = '#9fc9ff'; c.fillText(b.nick, b.x * k, b.y * k + 14); }
+  // falò
+  for (const f of allFires()) { c.fillStyle = 'rgba(255,176,0,.35)'; c.beginPath(); c.arc(f.x * k, f.y * k, 6 + Math.sin(t * 6) * 1, 0, 6.28); c.fill(); c.fillStyle = '#ffb000'; c.beginPath(); c.arc(f.x * k, f.y * k, 2.5, 0, 6.28); c.fill(); }
+  // animali domestici
+  c.fillStyle = '#f4f1ea';
+  for (const p of pets.concat(Net.remotePets)) { c.beginPath(); c.arc(p.x * k, p.y * k, 1.6, 0, 6.28); c.fill(); }
+  // altri giocatori
+  for (const p of Net.peers) {
+    const pr = p.presence || {}; if (!isNum(pr.x) || !isNum(pr.y)) continue;
+    c.fillStyle = '#4fa3e8'; c.strokeStyle = '#0e1912'; c.lineWidth = 1.5;
+    c.beginPath(); c.arc(pr.x * k, pr.y * k, 4, 0, 6.28); c.fill(); c.stroke();
+    c.fillStyle = '#cfe6ff'; c.fillText(nameOf(p), pr.x * k, pr.y * k - 8);
+  }
+  // tu
+  const x = S.x * k, y = S.y * k, a = S.face;
+  c.strokeStyle = `rgba(255,138,61,${0.6 - (t % 1.2) / 2})`; c.lineWidth = 2;
+  c.beginPath(); c.arc(x, y, 6 + (t % 1.2) * 12, 0, 6.28); c.stroke();
+  c.fillStyle = '#ff8a3d'; c.strokeStyle = '#fff'; c.lineWidth = 1.5;
+  c.beginPath(); c.moveTo(x + Math.cos(a) * 8, y + Math.sin(a) * 8); c.lineTo(x + Math.cos(a + 2.5) * 6, y + Math.sin(a + 2.5) * 6); c.lineTo(x + Math.cos(a - 2.5) * 6, y + Math.sin(a - 2.5) * 6); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle = '#fff'; c.fillText('Tu', x, y - 11);
+}
+window.addEventListener('resize', () => { if (G.mapOpen) { G.mapSize = 0; drawMap(); } });
+
 /* ---------- Input ---------- */
 const G = { keys: new Set(), joy: null, act: false, cd: 0, swing: 0, paused: true, action: null, uiT: 0, saveT: 0 };
 const cv = $('cv'), ctx = cv.getContext('2d');
@@ -991,6 +1094,8 @@ window.addEventListener('keydown', e => {
   if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { G.keys.add(k); e.preventDefault(); $('joyHint').hidden = true; }
   if (k === 'e' || k === ' ') { G.act = true; e.preventDefault(); }
   if (k === 'c' && !G.paused) openSheet();
+  if (k === 'm' && !G.sheet && !G.modal) { G.mapOpen ? closeMap() : openMap(); }
+  if (k === 'escape' && G.mapOpen) closeMap();
 });
 window.addEventListener('keyup', e => { if (F.open && (e.key === ' ' || e.key.toLowerCase() === 'e')) { fSpace = false; fRelease(); return; } const k = e.key.toLowerCase(); G.keys.delete(k); if (k === 'e' || k === ' ') G.act = false; });
 window.addEventListener('blur', () => { G.keys.clear(); G.act = false; });
@@ -1299,6 +1404,7 @@ function renderPack() {
   $('pack').innerHTML = `<button class="btn" id="craftBtn" type="button"><svg viewBox="0 0 24 24"><path d="M14 4l6 6-3 3-6-6zM11 7l-8 8 3 3 8-8"/></svg>Costruisci</button>` +
     `<button class="btn ghost" id="saveBtn" type="button"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg>Salva</button>` +
     `<button class="btn ghost" id="comBtn" type="button"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-4 3-6 6-6s6 2 6 6M15 14c3 0 6 2 6 5"/></svg>Comunità</button>` +
+    `<button class="btn ghost" id="mapBtn" type="button"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Mappa</button>` +
     ['legna', 'pietra', 'pelliccia', 'lana', ...eatable].filter(k => core.has(k) || S.inv[k] > 0).map(k => {
       const n = S.inv[k] || 0;
       return `<button class="item ${ITEMS[k].eat ? 'eat' : ''} ${n ? '' : 'zero'}" data-item="${k}" type="button" title="${ITEMS[k].n}">${ICON[k]}<b>${n}</b>${ITEMS[k].eat ? '' : ITEMS[k].n}</button>`;
@@ -1308,6 +1414,7 @@ $('pack').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.id === 'craftBtn') return openSheet();
   if (b.id === 'comBtn') return openSheet('community');
+  if (b.id === 'mapBtn') return openMap();
   if (b.id === 'saveBtn') return openSheet('saves');
   const k = b.dataset.item;
   if (ITEMS[k].eat) { if (S.inv[k] > 0) eat(k); else toast(`Non hai ${ITEMS[k].n.toLowerCase()}.`); }
@@ -1858,7 +1965,8 @@ function makeWebLobby() {
 let last = 0;
 function frame(ts) {
   const dt = Math.min(0.05, (ts - last) / 1000 || 0); last = ts;
-  const paused = G.sheet || G.modal || document.hidden || S.dead || F.open;
+  const paused = G.sheet || G.modal || document.hidden || S.dead || F.open || G.mapOpen;
+  if (G.mapOpen) { G.mapT = (G.mapT || 0) - dt; if (G.mapT <= 0) { G.mapT = 0.1; drawMap(); } }
   if (F.open && !document.hidden) { fishUpdate(dt); fishDraw(); }
   if (!paused) { update(dt); G.hit = Math.max(0, (G.hit || 0) - dt); G.saveT += dt; if (G.saveT > 5) { G.saveT = 0; save(); } G.cloudT = (G.cloudT || 0) + dt; if (G.cloudT > 45) { G.cloudT = 0; cloudAuto(); } }
   netTick(dt);
