@@ -5,7 +5,7 @@ import { DurableObject } from "cloudflare:workers";
 // Il mondo tiene in memoria chi è online e la chat, e salva su disco partite e classifica.
 
 const ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-const GIFTABLE = ["cotta", "verdure", "uova", "latte", "bacche", "carne", "legna"];
+const GIFTABLE = ["cotta", "pescecotto", "verdure", "uova", "latte", "bacche", "carne", "legna"];
 const PRESENCE_TTL = 10_000;
 const EVENT_TTL = 5 * 60_000;
 const RATE_LIMIT = 300; // richieste al minuto per indirizzo IP
