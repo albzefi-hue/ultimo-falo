@@ -119,6 +119,29 @@ button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
 .item.eat{border-color:#5e6f35;background:#223520}
 .item.eat::after{content:"mangia";font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--xp)}
 .item.zero{opacity:.35}
+.btn.news{position:relative}
+.btn.news::after{content:"";position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;background:var(--hp);box-shadow:0 0 0 2px var(--pine)}
+.mbar{height:8px;border-radius:99px;background:#0f1a13;overflow:hidden}
+.mbar i{display:block;height:100%;background:var(--xp)}
+.pill{font-size:12px;font-weight:800;padding:4px 10px;border-radius:99px;background:#0f1a13;color:var(--xp);border:1px solid var(--line)}
+.riddle{font-size:17px;color:var(--birch);font-style:italic;line-height:1.4}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opts .btn{padding:10px;font-size:15px}
+.tab{display:grid;gap:10px;max-width:440px;width:100%;justify-self:center}
+.tab-top{display:flex;justify-content:space-between;font-weight:800;color:var(--lichen);font-variant-numeric:tabular-nums}
+.tab-bar{height:8px;border-radius:99px;background:#0f1a13;overflow:hidden}
+.tab-bar i{display:block;height:100%;background:var(--ember)}
+.tab-q{text-align:center;font-family:var(--f-display);font-size:clamp(44px,9vh,64px);line-height:1.1}
+.tab-a{text-align:center;font-family:var(--f-display);font-size:clamp(36px,7vh,52px);min-height:1.3em;border-bottom:3px dashed var(--line);margin:0 40px;color:var(--ember)}
+.tab-fb{text-align:center;font-weight:800;min-height:1.4em}
+.tab-fb.ok{color:var(--xp)}
+.tab-fb.ko{color:var(--hp)}
+.tab-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tab-pad button{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--birch);font-family:var(--f-display);font-size:26px;height:clamp(48px,8vh,64px);touch-action:manipulation}
+.tab-pad .go{background:var(--xp);color:#16240f}
+.tab-pad .del{background:#5a2a2c}
+.tab-stars{text-align:center;font-size:40px;color:var(--food);letter-spacing:6px}
+.tab-big{text-align:center;font-family:var(--f-display);font-size:44px;color:var(--ember)}
 .mapview{position:absolute;inset:0;z-index:7;background:rgba(10,18,13,.96);display:flex;flex-direction:column}
 .map-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px 8px}
 .map-head h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:24px}
@@ -342,6 +365,8 @@ const GOALS = [
   { t: 'Raccogli le verdure dall’orto', p: () => [S.c.harvest || 0, 1], xp: 40 },
   { t: 'Costruisci una casa di legno', p: () => [S.c.casa || 0, 1], xp: 120 },
   { t: 'Pesca un pesce al lago', p: () => [S.c.fish || 0, 1], xp: 30 },
+  { t: 'Indovina un indovinello del gufo', p: () => [S.c.riddles || 0, 1], xp: 30 },
+  { t: 'Fai 10 su 10 alla Tabellina di Manu', p: () => [S.c.tab10 || 0, 1], xp: 60 },
   { t: 'Pesca una carpa, un luccio o un siluro', p: () => [S.c.bigfish || 0, 1], xp: 80 },
 ];
 const CAUSE = { fame: 'Sei morto di fame.', sete: 'Sei morto di sete.', freddo: 'Il gelo della notte ti ha preso.', lupo: 'I lupi ti hanno sbranato.', veleno: 'Un fungo velenoso ti è stato fatale.', carne: 'La carne cruda ti ha avvelenato.' };
@@ -448,7 +473,7 @@ function solids() {
     if (dist(posts[i], posts[j]) < 64) fenceSegs.push({ x1: posts[i].x, y1: posts[i].y, x2: posts[j].x, y2: posts[j].y });
   return objects.filter(o => o.k === 'tree' || o.k === 'rock').concat(
     fires.map(f => ({ x: f.x, y: f.y, r: 14 })), shelters.map(s => ({ x: s.x, y: s.y, r: 24 })),
-    builds.concat(Net.remoteBuilds).filter(b => SOLID_R[b.t] || b.t === 'rifugio').map(b => ({ x: b.x, y: b.y, r: SOLID_R[b.t] || 24 })));
+    builds.concat(Net.remoteBuilds).filter(b => SOLID_R[b.t] || b.t === 'rifugio').map(b => ({ x: b.x, y: b.y, r: SOLID_R[b.t] || 24 })), [OWL, SCHOOL]);
 }
 const repellers = () => allFires().concat(builds.concat(Net.remoteBuilds).filter(b => b.t === 'casa' || b.t === 'lanterna'));
 let solidCache = [];
@@ -490,6 +515,7 @@ function getAction() {
   let a = null, bd = 1e9;
   for (const m of animals) { const d = dist(m, S) - m.r; if (d < 44 && d < bd) { bd = d; a = m; } }
   if (a) return { label: a.k === 'wolf' ? 'Attacca il lupo' : 'Cattura il coniglio', target: a, cd: 0.45, run: () => hitAnimal(a) };
+  if (dist(OWL, S) < 48 || dist(SCHOOL, S) < 62) return { label: 'Entra a scuola', target: dist(OWL, S) < 48 ? OWL : SCHOOL, cd: 0.6, run: () => openSheet('missions') };
   const fire = nearest(fires, S, 70), anyFire = nearest(allFires(), S, 70);
   if (anyFire && (S.inv.carne > 0 || S.inv.pesce > 0)) return { label: S.inv.carne > 0 ? 'Cuoci la carne' : 'Cuoci il pesce', target: anyFire, cd: 0.7, run: cook };
   let ob = null; bd = 1e9;
@@ -1036,6 +1062,7 @@ function drawMap() {
   for (const s of shelters) mark({ t: 'rifugio', x: s.x, y: s.y }, false);
   for (const b of Net.remoteBuilds) mark(b, true);
   for (const b of Net.remoteBuilds) if (b.t === 'casa') { c.fillStyle = '#9fc9ff'; c.fillText(b.nick, b.x * k, b.y * k + 14); }
+  c.fillStyle = '#d8c3a0'; c.beginPath(); c.arc(OWL.x * k, OWL.y * k, 3.5, 0, 6.28); c.fill(); c.fillText('Scuola', OWL.x * k, OWL.y * k + 13);
   // falò
   for (const f of allFires()) { c.fillStyle = 'rgba(255,176,0,.35)'; c.beginPath(); c.arc(f.x * k, f.y * k, 6 + Math.sin(t * 6) * 1, 0, 6.28); c.fill(); c.fillStyle = '#ffb000'; c.beginPath(); c.arc(f.x * k, f.y * k, 2.5, 0, 6.28); c.fill(); }
   // animali domestici
@@ -1057,6 +1084,167 @@ function drawMap() {
   c.fillStyle = '#fff'; c.fillText('Tu', x, y - 11);
 }
 window.addEventListener('resize', () => { if (G.mapOpen) { G.mapSize = 0; drawMap(); } });
+
+/* ---------- Missioni del Gufo: Tabellina di Manu, indovinelli e compiti del bosco ---------- */
+const SCHOOL = { x: (N / 2 + 0.2) * T, y: (N / 2 + 2.4) * T, r: 30 };
+const OWL = { x: SCHOOL.x + 52, y: SCHOOL.y + 6, r: 12 };
+const RIDDLES = [
+  ['Più è grande, meno si vede. Che cos’è?', 'Il buio', 'La nebbia', 'La montagna', 'Il sole'],
+  ['Ha le lancette ma non è un pesce, segna le ore ma non parla.', 'L’orologio', 'La bussola', 'Il calendario', 'Il campanile'],
+  ['Ha un occhio solo ma non vede.', 'L’ago', 'Il ciclope', 'La chiave', 'Il bottone'],
+  ['Più ne togli, più diventa grande.', 'La buca', 'La torta', 'La pila di legna', 'L’albero'],
+  ['Ha quattro gambe ma non cammina.', 'Il tavolo', 'Il ragno', 'La scala', 'Il cane'],
+  ['Cade sempre ma non si fa mai male.', 'La pioggia', 'Il sasso', 'La mela', 'Il bambino'],
+  ['Ha il collo ma non ha la testa.', 'La bottiglia', 'La giraffa', 'Il cigno', 'Il lampione'],
+  ['Vola senza ali e piange senza occhi.', 'La nuvola', 'L’aquilone', 'L’uccello', 'Il vento'],
+  ['Si rompe appena dici il suo nome.', 'Il silenzio', 'Il vetro', 'L’uovo', 'Il segreto'],
+  ['Ha i tasti ma non apre nessuna porta.', 'Il pianoforte', 'Il portinaio', 'Il lucchetto', 'La cassaforte'],
+  ['Corre ma non ha le gambe, ha un letto ma non dorme mai.', 'Il fiume', 'Il treno', 'Il vento', 'La lepre'],
+  ['Gira tutto il mondo ma resta sempre nell’angolo.', 'Il francobollo', 'La mappa', 'L’aereo', 'Il mappamondo'],
+  ['Ha tanti denti ma non mangia mai.', 'Il pettine', 'Il lupo', 'Il coccodrillo', 'Il cucchiaio'],
+  ['Più asciuga, più si bagna.', 'L’asciugamano', 'Il sole', 'Il vento', 'L’ombrello'],
+  ['Ha una testa e una croce ma non ha il corpo.', 'La moneta', 'Il serpente', 'La cometa', 'Il chiodo'],
+  ['Ti segue sempre ma sparisce quando arriva il buio.', 'L’ombra', 'Il cane', 'Il gatto', 'L’eco'],
+  ['Ripete tutto quello che dici, ma non lo vedi mai.', 'L’eco', 'Il pappagallo', 'La radio', 'Lo specchio'],
+  ['Più è calda, più è fresca.', 'Il pane', 'La minestra', 'L’acqua', 'La neve'],
+  ['Nasce alta e muore bassa.', 'La candela', 'La luna', 'La quercia', 'Il gatto'],
+  ['Ha le pagine come foglie, ma non è un albero.', 'Il libro', 'Il pino', 'La quercia', 'Il castagno'],
+  ['Si alza al mattino e va giù la sera, ma non ha un letto.', 'Il sole', 'Il gallo', 'La luna', 'Il contadino'],
+  ['Mangia la legna, fa il fumo e ti scalda di notte.', 'Il fuoco', 'La coperta', 'Il sole', 'La neve'],
+  ['Ha la barba ma non è un uomo, ha le corna ma non è un toro.', 'La capra', 'Il cervo', 'La mucca', 'Il gufo'],
+  ['È tuo, ma gli altri lo usano più di te.', 'Il tuo nome', 'La tua bici', 'La tua casa', 'Il tuo telefono'],
+  ['Al mattino cammina con 4 zampe, a mezzogiorno con 2 e la sera con 3.', 'L’uomo', 'Il gatto', 'Il cavallo', 'Il lupo'],
+];
+const TASKS = [
+  { id: 'legna', t: 'Raccogli 10 legna', c: 'legna', goal: 10, rew: { pietra: 4, bacche: 4 }, xp: 30 },
+  { id: 'bacche', t: 'Raccogli 8 bacche', c: 'bacche', goal: 8, rew: { legna: 6 }, xp: 25 },
+  { id: 'fish', t: 'Pesca 2 pesci al lago', c: 'fish', goal: 2, rew: { cotta: 2 }, xp: 40, needs: () => S.tools.canna },
+  { id: 'wolf', t: 'Sconfiggi un lupo', c: 'wolf', goal: 1, rew: { cotta: 3, pelliccia: 1 }, xp: 60 },
+  { id: 'cook', t: 'Cuoci 3 volte sul fuoco', c: 'cook', goal: 3, rew: { legna: 5, pietra: 3 }, xp: 30 },
+  { id: 'rabbit', t: 'Cattura 2 conigli', c: 'rabbit', goal: 2, rew: { legna: 4, bacche: 4 }, xp: 35 },
+];
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fmtSec = v => v.toFixed(1).replace('.', ',') + ' s';
+const rewText = (rew, xp) => Object.entries(rew).map(([k, v]) => `${v} ${ITEMS[k].n.toLowerCase()}`).join(', ') + ` e ${xp} XP`;
+function missState() {
+  const d = day();
+  if (!S.miss || S.miss.day !== d) {
+    const pool = TASKS.filter(t => !t.needs || t.needs()), task = pool[Math.floor(Math.random() * pool.length)];
+    let r; do { r = Math.floor(Math.random() * RIDDLES.length); } while (S.miss && r === S.miss.riddle);
+    S.miss = { day: d, riddle: r, opts: shuffle(RIDDLES[r].slice(1)), riddleDone: false, riddleOk: false, tabDone: false, task: task.id, base: S.c[task.c] || 0, taskClaimed: false };
+  }
+  return S.miss;
+}
+const taskOf = m => TASKS.find(t => t.id === m.task) || TASKS[0];
+const taskProg = m => clamp((S.c[taskOf(m).c] || 0) - m.base, 0, taskOf(m).goal);
+function missNews() { if (!S || S.dead) return false; const m = missState(); return !m.riddleDone || !m.tabDone || (!m.taskClaimed && taskProg(m) >= taskOf(m).goal); }
+function give(rew, xp) { for (const [k, v] of Object.entries(rew)) S.inv[k] = (S.inv[k] || 0) + v; addXP(xp); return rewText(rew, xp); }
+function drawMissions() {
+  const m = missState(), t = taskOf(m), prog = taskProg(m), R = RIDDLES[m.riddle];
+  $('sheetBody').innerHTML = `<p class="where"><span>Benvenuto a scuola! Il maestro Gufo ha tre lezioni per te. Ogni nuovo giorno nel bosco arrivano lezioni nuove. Oggi è il giorno ${day()}.</span></p>
+    <div class="label">Matematica</div><div class="slot"><h4>La Tabellina di Manu</h4>
+      <div class="meta">10 tabelline a sorpresa dall’1 al 10. Vince chi è più veloce: ogni errore aggiunge 5 secondi. Premio di oggi: 1 legna per ogni risposta giusta, un po’ di pietra e, con 10 su 10, carne cotta.${S.tabBest ? ` Il tuo record con 10 su 10: <b>${fmtSec(S.tabBest)}</b>.` : ''}</div>
+      <div class="row">${m.tabDone ? '<span class="pill">Premio di oggi preso</span>' : ''}<button class="btn" data-tabstart type="button">${m.tabDone ? 'Gioca ancora' : 'Gioca'}</button></div></div>
+    <div class="label">Logica</div><div class="slot"><h4>Indovinello del giorno</h4><div class="riddle">${esc(R[0])}</div>
+      ${m.riddleDone ? `<div class="meta">${m.riddleOk ? 'Giusto!' : 'Non era questa.'} La risposta era <b>${esc(R[1])}</b>. Domani il gufo ne ha uno nuovo.</div>`
+        : `<div class="opts">${m.opts.map((o, i) => `<button class="btn ghost" data-riddle="${i}" type="button">${esc(o)}</button>`).join('')}</div><div class="meta">Hai un solo tentativo. Premio: 3 bacche, 1 carne cotta e 25 XP.</div>`}</div>
+    <div class="label">Pratica</div><div class="slot"><h4>Missione del bosco</h4><div class="meta">${t.t}. Premio: ${rewText(t.rew, t.xp)}.</div>
+      <div class="mbar"><i style="width:${prog / t.goal * 100}%"></i></div><div class="meta">${prog} / ${t.goal}</div>
+      <div class="row">${m.taskClaimed ? '<span class="pill">Premio riscosso</span>' : prog >= t.goal ? '<button class="btn" data-claimtask type="button">Riscuoti il premio</button>' : ''}</div></div>`;
+}
+function answerRiddle(i) {
+  const m = missState(); if (m.riddleDone) return;
+  const R = RIDDLES[m.riddle]; m.riddleDone = true; m.riddleOk = m.opts[i] === R[1];
+  if (m.riddleOk) { S.c.riddles = (S.c.riddles || 0) + 1; toast(`Giusto! Il gufo ti regala ${give({ bacche: 3, cotta: 1 }, 25)}.`); }
+  else toast(`Sbagliato: era “${R[1]}”. Riprova domani con un indovinello nuovo.`, 'bad');
+  save(); renderPack(); drawMissions();
+}
+function claimTask() {
+  const m = missState(), t = taskOf(m); if (m.taskClaimed || taskProg(m) < t.goal) return;
+  m.taskClaimed = true; toast(`Missione compiuta! Ricevi ${give(t.rew, t.xp)}.`); save(); renderPack(); drawMissions();
+}
+function tabStart() {
+  const qs = [];
+  while (qs.length < 10) { const a = 1 + Math.floor(Math.random() * 10), b = 1 + Math.floor(Math.random() * 10); if (!qs.some(q => q[0] === a && q[1] === b)) qs.push([a, b]); }
+  G.tab = { qs, i: 0, ans: '', ok: 0, errs: [], t0: performance.now(), pen: 0, fb: '', fbc: '' };
+  drawTab();
+}
+function drawTab() {
+  const g = G.tab, q = g.qs[g.i];
+  $('sheetBody').innerHTML = `<div class="tab"><div class="tab-top"><span>Domanda ${g.i + 1}/10</span><span id="tabClock"></span><span>Giuste ${g.ok}</span></div>
+    <div class="tab-bar"><i style="width:${g.i * 10}%"></i></div>
+    <div class="tab-q">${q[0]} × ${q[1]}</div><div class="tab-a">${g.ans}</div><div class="tab-fb ${g.fbc}">${g.fb}</div>
+    <div class="tab-pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button type="button" data-k="${n}">${n}</button>`).join('')}<button type="button" class="del" data-k="del" aria-label="Cancella">⌫</button><button type="button" data-k="0">0</button><button type="button" class="go" data-k="ok">OK</button></div>
+    <button class="btn ghost" data-tabexit type="button">Esci dalla lezione</button></div>`;
+  tabClock();
+}
+function tabClock() { const el = $('tabClock'); if (el && G.tab) el.textContent = fmtSec((performance.now() - G.tab.t0) / 1000 + G.tab.pen); }
+function tabKey(k) {
+  const g = G.tab; if (!g) return;
+  if (k === 'del') g.ans = g.ans.slice(0, -1);
+  else if (k === 'ok') {
+    if (!g.ans) return;
+    const q = g.qs[g.i], right = q[0] * q[1];
+    if (+g.ans === right) { g.ok++; g.fb = 'Giusto!'; g.fbc = 'ok'; }
+    else { g.pen += 5; g.errs.push(`${q[0]} × ${q[1]} = ${right}`); g.fb = `No: ${q[0]} × ${q[1]} fa ${right}. +5 secondi`; g.fbc = 'ko'; }
+    g.ans = ''; g.i++;
+    if (g.i >= 10) return tabEnd();
+  } else if (g.ans.length < 3) g.ans += k;
+  drawTab();
+}
+function tabEnd() {
+  const g = G.tab, total = (performance.now() - g.t0) / 1000 + g.pen, m = missState();
+  G.tab = null;
+  const stars = g.ok === 10 ? 3 : g.ok >= 7 ? 2 : g.ok >= 4 ? 1 : 0;
+  let rec = false, reward = '';
+  if (g.ok === 10) { S.c.tab10 = (S.c.tab10 || 0) + 1; if (!S.tabBest || total < S.tabBest) { rec = !!S.tabBest; S.tabBest = total; } }
+  if (!m.tabDone && g.ok > 0) {
+    const rew = { legna: g.ok, pietra: Math.max(1, Math.floor(g.ok / 2)) }; if (g.ok === 10) rew.cotta = 2;
+    reward = give(rew, g.ok * 5); m.tabDone = true;
+  }
+  save(); renderPack();
+  $('sheetBody').innerHTML = `<div class="tab"><div class="tab-stars">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</div>
+    <div class="tab-big">${g.ok} su 10</div>
+    <p class="meta" style="text-align:center;margin:0">Tempo: <b>${fmtSec(total)}</b>${g.pen ? ` (con ${g.pen} secondi di penalità)` : ''}${rec ? ' · nuovo record!' : ''}</p>
+    ${reward ? `<p class="where" style="justify-content:center"><span>Il gufo ti regala ${reward}.</span></p>` : '<p class="meta" style="text-align:center;margin:0">Il premio di oggi l’hai già preso: domani ne arriva un altro.</p>'}
+    ${g.errs.length ? `<p class="meta" style="margin:0">Da ripassare: <b>${g.errs.join(' · ')}</b></p>` : '<p class="meta" style="text-align:center;margin:0">Nessun errore, bravissimo!</p>'}
+    <div class="row" style="justify-content:center"><button class="btn" data-tabstart type="button">Gioca ancora</button><button class="btn ghost" data-tabback type="button">Torna alle lezioni</button></div></div>`;
+}
+function drawSchool(o, t) {
+  const c = ctx, x = o.x, y = o.y, night = darkness() > 0.4;
+  c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(x + 3, y + 4, 40, 10, 0, 0, 6.28); c.fill();
+  c.fillStyle = '#c9a36b'; c.fillRect(x - 34, y - 38, 68, 38);
+  c.strokeStyle = '#a8834f'; c.lineWidth = 1.5; for (let i = 1; i < 4; i++) { c.beginPath(); c.moveTo(x - 34, y - i * 9.5); c.lineTo(x + 34, y - i * 9.5); c.stroke(); }
+  c.fillStyle = '#3f6e8c'; c.beginPath(); c.moveTo(x - 40, y - 38); c.lineTo(x, y - 66); c.lineTo(x + 40, y - 38); c.closePath(); c.fill();
+  c.fillStyle = '#5b3a22'; c.fillRect(x - 3, y - 84, 6, 20);
+  c.fillStyle = '#e0b44a'; c.beginPath(); c.moveTo(x - 6, y - 74 + Math.sin(t * 3) * 0.5); c.quadraticCurveTo(x, y - 86, x + 6, y - 74); c.closePath(); c.fill();
+  c.fillStyle = '#4a2e1a'; c.fillRect(x - 8, y - 22, 16, 22);
+  c.fillStyle = night ? '#ffd36a' : '#bfe0ee'; c.fillRect(x - 27, y - 30, 12, 10); c.fillRect(x + 15, y - 30, 12, 10);
+  c.fillStyle = '#f2ece0'; c.fillRect(x - 20, y - 50, 40, 10);
+  c.fillStyle = '#2a1a10'; c.font = '800 8px "Barlow Semi Condensed", sans-serif'; c.textAlign = 'center'; c.fillText('SCUOLA', x, y - 42.5);
+}
+function drawOwl(o, t) {
+  const c = ctx, x = o.x, y = o.y;
+  c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(x + 2, y + 4, 14, 5, 0, 0, 6.28); c.fill();
+  c.fillStyle = '#5e3f25'; c.fillRect(x - 11, y - 14, 22, 16);
+  c.fillStyle = '#8a6440'; c.beginPath(); c.ellipse(x, y - 14, 11, 4, 0, 0, 6.28); c.fill();
+  c.fillStyle = '#8b6a4a'; c.beginPath(); c.ellipse(x, y - 28, 9, 12, 0, 0, 6.28); c.fill();
+  c.beginPath(); c.moveTo(x - 8, y - 34); c.lineTo(x - 7, y - 43); c.lineTo(x - 3, y - 37); c.fill();
+  c.beginPath(); c.moveTo(x + 8, y - 34); c.lineTo(x + 7, y - 43); c.lineTo(x + 3, y - 37); c.fill();
+  c.fillStyle = '#d8c3a0'; c.beginPath(); c.ellipse(x, y - 24, 5.5, 7.5, 0, 0, 6.28); c.fill();
+  const blink = Math.sin(t * 0.8) > 0.97;
+  for (const s of [-4, 4]) {
+    if (blink) { c.strokeStyle = '#2a1a10'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x + s - 3, y - 32); c.lineTo(x + s + 3, y - 32); c.stroke(); continue; }
+    c.fillStyle = '#f7e9b0'; c.beginPath(); c.arc(x + s, y - 32, 3.6, 0, 6.28); c.fill();
+    c.fillStyle = '#111'; c.beginPath(); c.arc(x + s, y - 32, 1.8, 0, 6.28); c.fill();
+  }
+  c.fillStyle = '#e0a43a'; c.beginPath(); c.moveTo(x - 2, y - 29); c.lineTo(x + 2, y - 29); c.lineTo(x, y - 25); c.fill();
+  if (missNews()) {
+    const by = y - 54 - Math.abs(Math.sin(t * 4)) * 3;
+    c.fillStyle = '#ffd36a'; c.beginPath(); c.arc(x, by, 7, 0, 6.28); c.fill();
+    c.fillStyle = '#2a1206'; c.fillRect(x - 1.2, by - 4.5, 2.4, 6); c.fillRect(x - 1.2, by + 2.5, 2.4, 2);
+  }
+}
 
 /* ---------- Input ---------- */
 const G = { keys: new Set(), joy: null, act: false, cd: 0, swing: 0, paused: true, action: null, uiT: 0, saveT: 0 };
@@ -1085,6 +1273,12 @@ ab.addEventListener('pointerdown', e => { e.preventDefault(); G.act = true; ab.c
 let fSpace = false;
 window.addEventListener('keydown', e => {
   if (e.target && e.target.closest && e.target.closest('input,textarea')) return;
+  if (G.tab && G.sheet) {
+    if (/^[0-9]$/.test(e.key)) { e.preventDefault(); tabKey(e.key); }
+    else if (e.key === 'Backspace') { e.preventDefault(); tabKey('del'); }
+    else if (e.key === 'Enter') { e.preventDefault(); tabKey('ok'); }
+    return;
+  }
   if (F.open) {
     if (e.key === ' ' || e.key.toLowerCase() === 'e') { e.preventDefault(); if (!fSpace) { fSpace = true; fPress(); } }
     if (e.key === 'Escape') closeFishing();
@@ -1239,6 +1433,8 @@ function draw(t) {
   for (const s of shelters) if (inView(s)) vis.push({ ...s, k: 'shelter' });
   for (const b of builds) if (inView(b)) vis.push({ ...b, k: 'b_' + b.t, ref: b });
   for (const p of pets) if (inView(p)) vis.push(p);
+  if (inView(OWL)) vis.push({ k: 'owl', x: OWL.x, y: OWL.y });
+  if (inView(SCHOOL)) vis.push({ k: 'school', x: SCHOOL.x, y: SCHOOL.y });
   for (const b of Net.remoteBuilds) if (inView(b)) vis.push(b.t === 'rifugio' ? { ...b, k: 'shelter' } : { ...b, k: 'b_' + b.t, g: 0.5, ref: b });
   for (const p of Net.remotePets) if (inView(p)) vis.push(p);
   for (const a of animals) if (inView(a)) vis.push(a);
@@ -1341,6 +1537,10 @@ function drawThing(o, t) {
     c.beginPath(); c.moveTo(o.x + dir * 11, o.y - 21); c.lineTo(o.x + dir * 13, o.y - 29); c.lineTo(o.x + dir * 17, o.y - 22); c.fill();
     c.beginPath(); c.moveTo(o.x - dir * 16, o.y - 13); c.quadraticCurveTo(o.x - dir * 28, o.y - 14, o.x - dir * 26, o.y - 4); c.lineTo(o.x - dir * 16, o.y - 9); c.fill();
     c.fillStyle = '#ffd65a'; c.fillRect(o.x + dir * 16 - 1, o.y - 18, 2.5, 2);
+  } else if (o.k === 'owl') {
+    drawOwl(o, t);
+  } else if (o.k === 'school') {
+    drawSchool(o, t);
   } else if (o.k.startsWith('b_') || PET_TIME[o.k] || o.k === 'cane') {
     drawFarm(o, t);
   } else if (o.k === 'peer') {
@@ -1390,6 +1590,7 @@ function hud() {
   $('goal').querySelector('small').textContent = S.community ? (Net.room ? `Obiettivo \u00b7 ${Net.peers.length ? Net.peers.length + ' nel bosco con te' : 'bosco della comunit\u00e0'}` : 'Obiettivo \u00b7 bosco della comunit\u00e0') : 'Obiettivo';
   $('chatBtn').hidden = !(S.community && Net.room);
   if ($('chatBtn').hidden) $('chatBar').hidden = true;
+  if ($('missBtn')) $('missBtn').classList.toggle('news', missNews());
   $('fishBtn').hidden = !(S.tools.canna && !S.dead && !F.open && nearWater());
   if (!S.tools.canna && nearWater() && !G.fishTip) { G.fishTip = true; toast('Qui si può pescare: costruisci una canna da pesca nel menu Costruisci.'); }
   const a = G.action;
@@ -1405,6 +1606,7 @@ function renderPack() {
     `<button class="btn ghost" id="saveBtn" type="button"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg>Salva</button>` +
     `<button class="btn ghost" id="comBtn" type="button"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-4 3-6 6-6s6 2 6 6M15 14c3 0 6 2 6 5"/></svg>Comunità</button>` +
     `<button class="btn ghost" id="mapBtn" type="button"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Mappa</button>` +
+    `<button class="btn ghost" id="missBtn" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="10" r="6"/><circle cx="9.5" cy="9.5" r="1.4"/><circle cx="14.5" cy="9.5" r="1.4"/><path d="M8 4l1.5 2.5M16 4l-1.5 2.5M11 13l1 1 1-1M9 16v4M15 16v4"/></svg>Missioni</button>` +
     ['legna', 'pietra', 'pelliccia', 'lana', ...eatable].filter(k => core.has(k) || S.inv[k] > 0).map(k => {
       const n = S.inv[k] || 0;
       return `<button class="item ${ITEMS[k].eat ? 'eat' : ''} ${n ? '' : 'zero'}" data-item="${k}" type="button" title="${ITEMS[k].n}">${ICON[k]}<b>${n}</b>${ITEMS[k].eat ? '' : ITEMS[k].n}</button>`;
@@ -1415,6 +1617,7 @@ $('pack').addEventListener('click', e => {
   if (b.id === 'craftBtn') return openSheet();
   if (b.id === 'comBtn') return openSheet('community');
   if (b.id === 'mapBtn') return openMap();
+  if (b.id === 'missBtn') return openSheet('missions');
   if (b.id === 'saveBtn') return openSheet('saves');
   const k = b.dataset.item;
   if (ITEMS[k].eat) { if (S.inv[k] > 0) eat(k); else toast(`Non hai ${ITEMS[k].n.toLowerCase()}.`); }
@@ -1427,17 +1630,19 @@ function toast(html, cls) {
 }
 function openSheet(mode) {
   if (S.dead) return;
-  G.sheetMode = ['saves', 'community'].includes(mode) ? mode : 'craft';
+  G.sheetMode = ['saves', 'community', 'missions'].includes(mode) ? mode : 'craft';
   G.sheet = true; G.act = false; G.joy = null; $('joy').hidden = true;
-  $('sheetTitle').textContent = { saves: 'Salvataggi', community: 'Comunità', craft: 'Costruisci' }[G.sheetMode];
+  $('sheetTitle').textContent = { saves: 'Salvataggi', community: 'Comunità', craft: 'Costruisci', missions: 'La Scuola del bosco' }[G.sheetMode];
   $('sheet').hidden = false;
   confirmAsk = null;
+  G.tab = null;
   if (G.sheetMode === 'saves') { G.slotsLoaded = false; drawSaves(); refreshSlots(); }
+  else if (G.sheetMode === 'missions') drawMissions();
   else if (G.sheetMode === 'community') { Net.board = null; drawCommunity(); loadBoard(); resolveNames().then(() => { if (G.sheetMode === 'community') drawCommunity(); }); }
   else renderSheet();
 }
 function closeSheet() {
-  G.sheet = false; G.sheetMode = null; $('sheet').hidden = true; renderPack();
+  G.sheet = false; G.sheetMode = null; G.tab = null; $('sheet').hidden = true; renderPack();
   if (G.fromIntro) { G.fromIntro = false; intro(G.resumed); }
 }
 
@@ -1592,6 +1797,11 @@ $('sheetBody').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
   const d = b.dataset;
   if (d.craft) return craft(d.craft);
+  if ('tabstart' in d) return tabStart();
+  if (d.k) return tabKey(d.k);
+  if ('tabexit' in d || 'tabback' in d) { G.tab = null; return drawMissions(); }
+  if (d.riddle !== undefined) return answerRiddle(+d.riddle);
+  if ('claimtask' in d) return claimTask();
   if (d.save) { if (slotRows[d.save]) { confirmAsk = { act: 'save', id: d.save }; drawSaves(); } else slotAction('save', d.save); }
   if (d.load) { if (G.fromIntro) slotAction('load', d.load); else { confirmAsk = { act: 'load', id: d.load }; drawSaves(); } }
   if (d.del) { confirmAsk = { act: 'del', id: d.del }; drawSaves(); }
@@ -1971,6 +2181,7 @@ function frame(ts) {
   if (!paused) { update(dt); G.hit = Math.max(0, (G.hit || 0) - dt); G.saveT += dt; if (G.saveT > 5) { G.saveT = 0; save(); } G.cloudT = (G.cloudT || 0) + dt; if (G.cloudT > 45) { G.cloudT = 0; cloudAuto(); } }
   netTick(dt);
   if (W && H) draw(S.time);
+  if (G.tab) tabClock();
   G.uiT -= dt; if (G.uiT <= 0) { G.uiT = 0.1; hud(); }
   if (!paused && G.packDirty !== JSON.stringify(S.inv)) { G.packDirty = JSON.stringify(S.inv); renderPack(); }
   requestAnimationFrame(frame);
