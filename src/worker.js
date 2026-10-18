@@ -9,6 +9,8 @@ const GIFTABLE = ["cotta", "verdure", "uova", "latte", "bacche", "carne", "legna
 const PRESENCE_TTL = 10_000;
 const EVENT_TTL = 5 * 60_000;
 const RATE_LIMIT = 300; // richieste al minuto per indirizzo IP
+const VILLAGE_KINDS = ["casa", "recinto", "orto", "pozzo", "lanterna", "trappola", "pollaio", "ovile", "stalla", "cuccia", "rifugio"];
+const WORLD_PX = 2560;
 
 const json = (data, status = 200) =>
   Response.json(data, { status, headers: { "cache-control": "no-store" } });
@@ -39,6 +41,7 @@ function cleanPresence(p) {
   for (const k of ["x", "y", "fc", "lv", "d", "mv", "dead"]) if (isNum(p[k])) out[k] = p[k];
   if (Array.isArray(p.f)) out.f = p.f.slice(0, 4).filter((q) => Array.isArray(q) && q.length === 3 && q.every(isNum));
   if (Array.isArray(p.g)) out.g = p.g.slice(0, 20).filter((v) => Number.isInteger(v));
+  if (Array.isArray(p.pt)) out.pt = p.pt.slice(0, 12).filter((q) => Array.isArray(q) && q.length === 3 && q.every(isNum));
   return out;
 }
 
@@ -61,6 +64,28 @@ export class World extends DurableObject {
     this.seq = 0;
     this.hits = new Map(); // ip -> { n, start }
     this.board = null;
+    this.village = new Map(); // proprietario -> { nick, list: [[tipo, x, y]], at }
+    this.bv = 1;
+    ctx.blockConcurrencyWhile(async () => {
+      this.village = new Map((await ctx.storage.get("village")) || []);
+      this.bv = (await ctx.storage.get("bv")) || 1;
+    });
+  }
+
+  async setVillage(owner, nick, raw) {
+    const list = (Array.isArray(raw) ? raw : []).slice(0, 150)
+      .filter((q) => Array.isArray(q) && VILLAGE_KINDS.includes(q[0]) && isNum(q[1]) && isNum(q[2]))
+      .map((q) => [q[0], Math.max(0, Math.min(WORLD_PX, Math.round(q[1]))), Math.max(0, Math.min(WORLD_PX, Math.round(q[2])))]);
+    const prev = this.village.get(owner);
+    if (prev && prev.nick === nick && JSON.stringify(prev.list) === JSON.stringify(list)) return;
+    if (list.length) this.village.set(owner, { nick, list, at: Date.now() });
+    else this.village.delete(owner);
+    if (this.village.size > 500) {
+      const oldest = [...this.village].sort((a, b) => a[1].at - b[1].at).slice(0, this.village.size - 500);
+      for (const [k] of oldest) this.village.delete(k);
+    }
+    this.bv++;
+    await this.ctx.storage.put({ village: [...this.village], bv: this.bv });
   }
 
   limited(ip) {
@@ -153,7 +178,7 @@ export class World extends DurableObject {
   /* ---------- Bosco della comunità ---------- */
 
   async sync(req) {
-    const b = await readJSON(req, 8_000);
+    const b = await readJSON(req, 16_000);
     if (typeof b.id !== "string" || !/^[a-z0-9]{6,20}$/.test(b.id)) return bad("invalid id");
     const now = Date.now();
     const nick = cleanNick(b.nick);
@@ -164,7 +189,9 @@ export class World extends DurableObject {
     this.presence.set(b.id, { nick, pres: cleanPresence(b.pres), t: now });
 
     const incoming = Array.isArray(b.events) ? b.events.slice(0, 5) : [];
+    const owner = typeof b.owner === "string" && /^[a-z0-9]{6,20}$/.test(b.owner) ? b.owner : null;
     for (const e of incoming) {
+      if (e && e.topic === "mybuilds" && owner && e.data) { await this.setVillage(owner, nick, e.data.list); continue; }
       const ev = cleanEvent(e);
       if (ev) this.events.push({ ...ev, k: `${now.toString(36)}-${(this.seq++).toString(36)}`, ts: now, from: b.id, nick });
     }
@@ -173,7 +200,9 @@ export class World extends DurableObject {
     const since = isNum(b.since) && b.since > 0 ? Math.max(b.since, now - 60_000) : now - 20_000;
     const events = this.events.filter((e) => e.ts >= since).slice(-40);
     const peers = [...this.presence].map(([id, v]) => ({ id, nick: v.nick, pres: v.pres }));
-    return json({ now, peers, events });
+    const out = { now, peers, events, bv: this.bv };
+    if (b.bv !== this.bv) out.builds = [...this.village].map(([o, v]) => ({ owner: o, nick: v.nick, list: v.list }));
+    return json(out);
   }
 }
 

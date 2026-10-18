@@ -322,7 +322,7 @@ function freshRun(seedArg) {
   fillInv();
   for (let i = 0; i < 14; i++) spawnRabbit(true);
 }
-const fillInv = () => { for (const k of Object.keys(ITEMS)) S.inv[k] = S.inv[k] || 0; };
+const fillInv = () => { for (const k of Object.keys(ITEMS)) S.inv[k] = S.inv[k] || 0; S.owner = S.owner || Math.random().toString(36).slice(2, 12); };
 function serialize() { return JSON.stringify({ S, objects, fires, shelters, builds, pets }); }
 function restore(json) {
   try {
@@ -367,15 +367,15 @@ function spawnWolf() {
 
 /* ---------- Movimento e collisioni ---------- */
 function solids() {
-  const posts = builds.filter(b => b.t === 'recinto');
+  const posts = builds.concat(Net.remoteBuilds).filter(b => b.t === 'recinto');
   fenceSegs = [];
   for (let i = 0; i < posts.length; i++) for (let j = i + 1; j < posts.length; j++)
     if (dist(posts[i], posts[j]) < 64) fenceSegs.push({ x1: posts[i].x, y1: posts[i].y, x2: posts[j].x, y2: posts[j].y });
   return objects.filter(o => o.k === 'tree' || o.k === 'rock').concat(
     fires.map(f => ({ x: f.x, y: f.y, r: 14 })), shelters.map(s => ({ x: s.x, y: s.y, r: 24 })),
-    builds.filter(b => SOLID_R[b.t]).map(b => ({ x: b.x, y: b.y, r: SOLID_R[b.t] })));
+    builds.concat(Net.remoteBuilds).filter(b => SOLID_R[b.t] || b.t === 'rifugio').map(b => ({ x: b.x, y: b.y, r: SOLID_R[b.t] || 24 })));
 }
-const repellers = () => allFires().concat(builds.filter(b => b.t === 'casa' || b.t === 'lanterna'));
+const repellers = () => allFires().concat(builds.concat(Net.remoteBuilds).filter(b => b.t === 'casa' || b.t === 'lanterna'));
 let solidCache = [];
 function moveEnt(e, dx, dy, r) {
   const nx = clamp(e.x + dx, T, WPX - T), ny = clamp(e.y + dy, T, WPX - T);
@@ -423,7 +423,7 @@ function getAction() {
   const pp = S.community && Net.room ? nearPeer() : null, gi = pp && GIFTABLE.find(k => S.inv[k] > 0);
   if (pp && gi) return { label: `Regala 1 ${ITEMS[gi].n.toLowerCase()} a ${nameOf(pp)}`, cd: 0.8, run: () => giveGift(pp) };
   const farm = farmAction(); if (farm) return farm;
-  const sh = nearest(shelters.concat(builds.filter(b => b.t === 'casa')), S, 80);
+  const sh = nearest(shelters.concat(builds.filter(b => b.t === 'casa'), Net.remoteBuilds.filter(b => b.t === 'casa' || b.t === 'rifugio')), S, 80);
   if (sh && isNight()) return { label: 'Dormi fino all’alba', target: sh, cd: 1, run: sleep };
   if (nearWater()) return { label: 'Bevi', cd: 0.6, run: drink };
   if (fire && S.inv.legna > 0 && fire.life < FIRE_MAX - 20) return { label: 'Ravviva il fuoco', target: fire, cd: 0.6, run: () => { S.inv.legna--; fire.life = Math.min(FIRE_MAX, fire.life + 45); floatTxt(fire.x, fire.y - 30, '+45 s di fuoco', '#ffb27a'); } };
@@ -484,7 +484,7 @@ function craft(id) {
     const off = r.place;
     // Cerca un posto libero: prima davanti a te, poi ai lati e più lontano, senza sovrapporsi ad altre costruzioni
     const need = SOLID_R[id] || 20;
-    const placed = builds.map(b => ({ x: b.x, y: b.y, r: SOLID_R[b.t] || 22, fence: b.t === 'recinto' }))
+    const placed = builds.concat(Net.remoteBuilds).map(b => ({ x: b.x, y: b.y, r: SOLID_R[b.t] || 22, fence: b.t === 'recinto' }))
       .concat(shelters.map(s => ({ x: s.x, y: s.y, r: 26 })), fires.map(f => ({ x: f.x, y: f.y, r: 16 })));
     const free = (x, y) => placed.every(o => dist(o, { x, y }) > (id === 'recinto' && o.fence ? 20 : o.r + need + 6));
     outer: for (const k of [1, 1.6, 2.3]) for (const a of [0, 0.6, -0.6, 1.2, -1.2, 1.9, -1.9, 3.14]) {
@@ -501,11 +501,13 @@ function craft(id) {
   else if (r.place) addBuild(id, spot);
   else S.tools[id] = true;
   solidCache = solids();
+  if (r.place) shareBuilds();
   toast(`Hai costruito: ${r.n}`);
   closeSheet();
 }
 
 /* ---------- Casa, campagna e animali domestici ---------- */
+const PET_KIND = ['gallina', 'pecora', 'mucca', 'cane'];
 const PET_NAME = { gallina: 'la gallina', pecora: 'la pecora', mucca: 'la mucca' };
 function spawnPet(k, x, y) {
   const a = Math.random() * 6.28;
@@ -538,6 +540,7 @@ function farmAction() {
     if (b.t === 'trappola' && b.caught && d < 44) return { label: 'Prendi il coniglio dalla trappola', target: b, cd: 0.6, run: () => { S.inv.carne++; b.caught = false; b.c = 50 + Math.random() * 25; S.c.rabbit++; addXP(4); floatTxt(b.x, b.y - 22, '+1 carne'); } };
     if (b.t === 'pozzo' && d < 52) return { label: 'Bevi dal pozzo', target: b, cd: 0.6, run: drink };
   }
+  for (const b of Net.remoteBuilds) if (b.t === 'pozzo' && dist(b, S) < 52) return { label: `Bevi dal pozzo di ${b.nick}`, target: b, cd: 0.6, run: drink };
   const dog = pets.find(p => p.k === 'cane' && dist(p, S) < 36);
   if (dog && !isNight()) return { label: 'Accarezza il cane', target: dog, cd: 1, run: () => floatTxt(dog.x, dog.y - 24, '♥', '#ff8a9a') };
   return null;
@@ -732,7 +735,7 @@ function update(dt) {
   G.action = getAction();
   if (G.act && G.action && G.cd <= 0) { G.cd = G.action.cd; if (G.action.target) S.face = Math.atan2(G.action.target.y - S.y, G.action.target.x - S.x); G.action.run(); renderPack(); }
   // bisogni
-  const nearFire = allFires().some(f => dist(f, S) < 150) || builds.some(b => b.t === 'casa' && dist(b, S) < 85), nearShelter = shelters.some(s => dist(s, S) < 80);
+  const nearFire = allFires().some(f => dist(f, S) < 150) || builds.concat(Net.remoteBuilds).some(b => b.t === 'casa' && dist(b, S) < 85), nearShelter = shelters.some(s => dist(s, S) < 80);
   S.food -= dt * 100 / 230;
   S.water -= dt * 100 / 170 * (S.tools.borraccia ? 0.65 : 1);
   if (nearFire) S.warm += dt * 18;
@@ -846,6 +849,8 @@ function draw(t) {
   for (const s of shelters) if (inView(s)) vis.push({ ...s, k: 'shelter' });
   for (const b of builds) if (inView(b)) vis.push({ ...b, k: 'b_' + b.t, ref: b });
   for (const p of pets) if (inView(p)) vis.push(p);
+  for (const b of Net.remoteBuilds) if (inView(b)) vis.push(b.t === 'rifugio' ? { ...b, k: 'shelter' } : { ...b, k: 'b_' + b.t, g: 0.5, ref: b });
+  for (const p of Net.remotePets) if (inView(p)) vis.push(p);
   for (const a of animals) if (inView(a)) vis.push(a);
   vis.push({ k: 'player', x: S.x, y: S.y });
   vis.sort((a, b) => a.y - b.y);
@@ -863,7 +868,7 @@ function draw(t) {
     dctx.globalCompositeOperation = 'destination-out';
     const light = (x, y, r) => { const g = dctx.createRadialGradient(x, y, r * 0.15, x, y, r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); dctx.fillStyle = g; dctx.beginPath(); dctx.arc(x, y, r, 0, 6.28); dctx.fill(); };
     light(S.x - camX, S.y - camY, S.torch > 0 ? 250 + Math.sin(t * 9) * 6 : 85);
-    for (const b of builds) if (b.t === 'casa' || b.t === 'lanterna') light(b.x - camX, b.y - camY - 12, b.t === 'casa' ? 125 : 165);
+    for (const b of builds.concat(Net.remoteBuilds)) if (b.t === 'casa' || b.t === 'lanterna') light(b.x - camX, b.y - camY - 12, b.t === 'casa' ? 125 : 165);
     for (const f of allFires()) light(f.x - camX, f.y - camY, 120 + Math.min(1, f.life / 30) * 90 + Math.sin(t * 11 + f.x) * 8);
     ctx.drawImage(dark, 0, 0, W, H);
     // occhi dei lupi che brillano nel buio
@@ -890,6 +895,7 @@ function draw(t) {
     bubble(Net.bubbles[p.peer], x, y - 68);
   }
   bubble(Net.bubbles.me, S.x - camX, S.y - camY - 56);
+  for (const b of Net.remoteBuilds) if (b.t === 'casa') { const x = b.x - camX, y = b.y - camY; if (x > -80 && y > -80 && x < W + 80 && y < H + 120) label(`Casa di ${b.nick}`, x, y + 18, '#9fc9ff'); }
   for (const f of floats) { ctx.globalAlpha = clamp(f.life, 0, 1); ctx.fillStyle = '#0b140e'; ctx.fillText(f.txt, f.x - camX + 1, f.y - camY + 1); ctx.fillStyle = f.col; ctx.fillText(f.txt, f.x - camX, f.y - camY); }
   ctx.globalAlpha = 1;
 }
@@ -1262,7 +1268,7 @@ function intro(resumed) {
 /* ---------- Comunità: bosco condiviso, chat, regali, classifica ---------- */
 const COMMUNITY_SEED = 424242;
 const GIFTABLE = ['cotta', 'verdure', 'uova', 'latte', 'bacche', 'carne', 'legna'];
-const Net = { lobby: null, room: null, joining: false, joinFailed: false, user: null, peers: [], names: {}, chat: [], bubbles: {}, fires: [], lastPres: '', myPeer: null, giftAt: {}, board: null };
+const Net = { lobby: null, room: null, joining: false, joinFailed: false, user: null, peers: [], names: {}, chat: [], bubbles: {}, fires: [], remoteBuilds: [], remotePets: [], lastPres: '', myPeer: null, giftAt: {}, board: null };
 const isNum = v => typeof v === 'number' && isFinite(v);
 const allFires = () => Net.fires.length ? fires.concat(Net.fires) : fires;
 const nameOf = p => (p && p.by && Net.names[p.by]) || 'Un esploratore';
@@ -1286,10 +1292,29 @@ async function joinForest() {
     r.on('chat', onChat, () => {});
     r.on('gift', onGift, () => {});
     r.on('gone', onGone, () => {});
+    r.on('village', onVillage, () => {});
+    shareBuilds();
   } catch (e) { if (e && e.code === 'not_permitted') Net.joinFailed = true; }
   finally { Net.joining = false; }
 }
-function leaveForest() { if (Net.room) { Net.room.leave().catch(() => {}); Net.room = null; Net.peers = []; Net.fires = []; } }
+function leaveForest() { if (Net.room) { Net.room.leave().catch(() => {}); Net.room = null; Net.peers = []; Net.fires = []; Net.remoteBuilds = []; Net.remotePets = []; solidCache = solids(); } }
+const VILLAGE_KINDS = ['casa', 'recinto', 'orto', 'pozzo', 'lanterna', 'trappola', 'pollaio', 'ovile', 'stalla', 'cuccia', 'rifugio'];
+// Il villaggio di ognuno sta sul server: lo vede anche chi entra dopo. Il proprio resta nel salvataggio.
+function shareBuilds() {
+  if (!S || !S.community || !Net.room) return;
+  const list = builds.map(b => [b.t, Math.round(b.x), Math.round(b.y)]).concat(shelters.map(s => ['rifugio', Math.round(s.x), Math.round(s.y)])).slice(0, 150);
+  Net.room.emit('mybuilds', { list }).catch(() => {});
+}
+function onVillage(m) {
+  const out = [];
+  for (const v of Array.isArray(m.data) ? m.data : []) {
+    if (!v || v.owner === S.owner || !Array.isArray(v.list)) continue;
+    for (const q of v.list) if (Array.isArray(q) && VILLAGE_KINDS.includes(q[0]) && isNum(q[1]) && isNum(q[2]))
+      out.push({ t: q[0], x: clamp(q[1], 0, WPX), y: clamp(q[2], 0, WPX), nick: String(v.nick || 'Un esploratore').slice(0, 16), remote: true });
+  }
+  Net.remoteBuilds = out;
+  solidCache = solids();
+}
 async function resolveNames() {
   if (!Net.user) return;
   const ids = [...new Set(Net.peers.map(p => p.by).concat(Net.chat.map(c => c.by)).filter(Boolean))];
@@ -1309,11 +1334,20 @@ function netTick(dt) {
     if (Array.isArray(f)) for (const q of f.slice(0, 4)) if (Array.isArray(q) && isNum(q[0]) && isNum(q[1]) && isNum(q[2]) && q[2] > 0) fl.push({ x: clamp(q[0], 0, WPX), y: clamp(q[1], 0, WPX), life: clamp(q[2], 0, FIRE_MAX), remote: true });
   }
   Net.fires = fl;
+  // animali degli altri (si vedono mentre il padrone è online)
+  const rp = [];
+  for (const p of Net.peers) {
+    const pt = p.presence && p.presence.pt;
+    if (Array.isArray(pt)) for (const q of pt.slice(0, 16)) if (Array.isArray(q) && q.every(isNum) && PET_KIND[q[0]])
+      rp.push({ k: PET_KIND[q[0]], x: clamp(q[1], 0, WPX), y: clamp(q[2], 0, WPX), ready: false, vx: 0, vy: 0, hop: G.time * 3 + q[1] });
+  }
+  Net.remotePets = rp;
   G.netT = (G.netT || 0) + dt;
   if (G.netT < 0.12) return;
   G.netT = 0;
   const own = fires.filter(f => dist(f, S) < 700).slice(0, 4).map(f => [Math.round(f.x), Math.round(f.y), Math.round(f.life)]);
-  const pres = { x: Math.round(S.x), y: Math.round(S.y), fc: Math.round(S.face * 100) / 100, lv: S.level, d: day(), mv: G.moving ? 1 : 0, dead: S.dead ? 1 : 0, f: own };
+  const pres = { x: Math.round(S.x), y: Math.round(S.y), fc: Math.round(S.face * 100) / 100, lv: S.level, d: day(), mv: G.moving ? 1 : 0, dead: S.dead ? 1 : 0, f: own,
+    pt: pets.filter(q => dist(q, S) < 700).slice(0, 12).map(q => [PET_KIND.indexOf(q.k), Math.round(q.x), Math.round(q.y)]) };
   const js = JSON.stringify(pres);
   if (js !== Net.lastPres) { Net.lastPres = js; Net.room.presence(pres).catch(() => {}); }
 }
@@ -1468,7 +1502,7 @@ function makeWebLobby() {
   return { join: async () => {
     const myId = Math.random().toString(36).slice(2, 12);
     const peerFns = [], topicFns = {}, peersMap = new Map(), seen = new Set(), goneSeen = new Set();
-    let pres = null, queue = [], gone = [], since = 0, conn = false, alive = true, inflight = false;
+    let pres = null, queue = [], gone = [], since = 0, conn = false, alive = true, inflight = false, villageV = -1;
     const fire = (topic, m) => (topicFns[topic] || []).forEach(fn => { try { fn(m); } catch (e) { console.error(e); } });
     function applyPeers(list) {
       const ids = new Set(), joined = [], left = [];
@@ -1492,9 +1526,10 @@ function makeWebLobby() {
       gone = gone.filter(g => now - g.t < 15000);
       const events = queue.splice(0, 5);
       try {
-        const j = await api('sync', { id: myId, nick: myNick(), pres: pres ? { ...pres, g: gone.map(g => g.id) } : null, events, since });
+        const j = await api('sync', { id: myId, owner: S && S.owner, nick: myNick(), pres: pres ? { ...pres, g: gone.map(g => g.id) } : null, events, since, bv: villageV });
         conn = true; since = j.now - 8000;
         applyPeers(j.peers || []);
+        if (j.builds) { villageV = j.bv; fire('village', { topic: 'village', data: j.builds }); }
         for (const e of j.events || []) {
           if (!e || seen.has(e.k)) continue;
           seen.add(e.k); Net.names[e.from] = e.nick || '';
