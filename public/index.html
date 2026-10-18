@@ -208,6 +208,10 @@ const ICON = {
   funghi: '<svg viewBox="0 0 24 24"><rect x="9.5" y="11" width="5" height="9" rx="2" fill="#eadfc8"/><path d="M3 12c0-5 4-8 9-8s9 3 9 8z" fill="#c9493a"/><circle cx="8" cy="8.5" r="1.3" fill="#fff"/><circle cx="14" cy="7" r="1.3" fill="#fff"/><circle cx="16.5" cy="10" r="1" fill="#fff"/></svg>',
   carne: '<svg viewBox="0 0 24 24"><path d="M14 3c4 0 7 3 7 7 0 5-6 7-9 4l-4 4c1 2-2 4-3 2s-3-1-2-3 2-1 3-1l4-4c-3-3-1-9 4-9z" fill="#e0817a"/><path d="M5 18l2-2" stroke="#f4ece0" stroke-width="2.5" stroke-linecap="round"/></svg>',
   cotta: '<svg viewBox="0 0 24 24"><path d="M14 3c4 0 7 3 7 7 0 5-6 7-9 4l-4 4c1 2-2 4-3 2s-3-1-2-3 2-1 3-1l4-4c-3-3-1-9 4-9z" fill="#94512c"/><path d="M14 6c2 0 4 2 4 4" stroke="#c98a4f" stroke-width="1.6" fill="none"/><path d="M5 18l2-2" stroke="#f4ece0" stroke-width="2.5" stroke-linecap="round"/></svg>',
+  uova: '<svg viewBox="0 0 24 24"><ellipse cx="9" cy="14" rx="5" ry="6.5" fill="#f4ead8"/><ellipse cx="16" cy="13" rx="4.5" ry="6" fill="#e3cfa9"/></svg>',
+  latte: '<svg viewBox="0 0 24 24"><path d="M8 4h8v3l2 3v11H6V10l2-3z" fill="#f2f2ee"/><path d="M6 14h12v7H6z" fill="#cfe3f0"/><rect x="8" y="2" width="8" height="2.5" fill="#4fb3d9"/></svg>',
+  verdure: '<svg viewBox="0 0 24 24"><path d="M12 22c-3 0-5-6-5-10s2-4 5-4 5 0 5 4-2 10-5 10z" fill="#f08a2e"/><path d="M12 8c-1-3-4-5-6-5 1 2 3 4 6 5zm0 0c1-3 4-5 6-5-1 2-3 4-6 5z" fill="#5fa04a"/></svg>',
+  lana: '<svg viewBox="0 0 24 24"><circle cx="8" cy="13" r="5" fill="#f1ede4"/><circle cx="15" cy="11" r="5.5" fill="#e2dccd"/><circle cx="13" cy="16" r="4.5" fill="#f7f4ee"/></svg>',
   pelliccia: '<svg viewBox="0 0 24 24"><path d="M4 8c2-3 5-3 8-2s6-1 8 2c1 3-1 4-1 7s1 5-2 6c-3 0-4-2-5-2s-2 2-5 2c-3-1-2-3-2-6S3 11 4 8z" fill="#8d8a86"/><path d="M8 10c2 1 6 1 8 0" stroke="#b4b0aa" stroke-width="1.4" fill="none"/></svg>',
 };
 const ITEMS = {
@@ -217,17 +221,35 @@ const ITEMS = {
   carne: { n: 'Carne cruda', eat: { food: 14, hp: -6 } },
   cotta: { n: 'Carne cotta', eat: { food: 38, hp: 8 } },
   pelliccia: { n: 'Pelliccia' },
+  uova: { n: 'Uova', eat: { food: 16 } },
+  latte: { n: 'Latte', eat: { food: 8, water: 28 } },
+  verdure: { n: 'Verdure', eat: { food: 22, water: 6, hp: 3 } },
+  lana: { n: 'Lana' },
 };
+const CAT_TOOLS = 'Attrezzi e vestiti', CAT_FIRE = 'Fuoco e riparo', CAT_FARM = 'Casa e campagna', CAT_PETS = 'Animali domestici';
 const RECIPES = [
-  { id: 'ascia', n: 'Ascia di pietra', cost: { legna: 3, pietra: 2 }, once: true, d: 'Abbatti gli alberi in due colpi invece di cinque.' },
-  { id: 'falo', n: 'Falò', cost: { legna: 5, pietra: 3 }, d: 'Scalda, cuoce la carne e tiene lontani i lupi. Brucia per circa due minuti e mezzo.' },
-  { id: 'borraccia', n: 'Borraccia di corteccia', cost: { legna: 4 }, once: true, d: 'La sete cala più piano, circa un terzo in meno.' },
-  { id: 'piccone', n: 'Piccone', cost: { legna: 3, pietra: 3 }, once: true, d: 'Spacchi le rocce in due colpi invece di sei.' },
-  { id: 'torcia', n: 'Torcia', cost: { legna: 2 }, d: 'Illumina il buio intorno a te per 90 secondi.' },
-  { id: 'lancia', n: 'Lancia', cost: { legna: 4, pietra: 2 }, once: true, d: 'Colpi tre volte più forti contro lupi e conigli.' },
-  { id: 'mantello', n: 'Mantello di pelliccia', cost: { pelliccia: 2, legna: 1 }, once: true, d: 'Di notte perdi calore alla metà della velocità.' },
-  { id: 'rifugio', n: 'Rifugio', cost: { legna: 15, pietra: 6 }, d: 'Di notte ci dormi dentro e ti svegli al mattino, al sicuro.' },
+  { id: 'ascia', cat: CAT_TOOLS, n: 'Ascia di pietra', cost: { legna: 3, pietra: 2 }, once: true, d: 'Abbatti gli alberi in due colpi invece di cinque.' },
+  { id: 'piccone', cat: CAT_TOOLS, n: 'Piccone', cost: { legna: 3, pietra: 3 }, once: true, d: 'Spacchi le rocce in due colpi invece di sei.' },
+  { id: 'lancia', cat: CAT_TOOLS, n: 'Lancia', cost: { legna: 4, pietra: 2 }, once: true, d: 'Colpi tre volte più forti contro lupi e conigli.' },
+  { id: 'borraccia', cat: CAT_TOOLS, n: 'Borraccia di corteccia', cost: { legna: 4 }, once: true, d: 'La sete cala più piano, circa un terzo in meno.' },
+  { id: 'torcia', cat: CAT_TOOLS, n: 'Torcia', cost: { legna: 2 }, d: 'Illumina il buio intorno a te per 90 secondi.' },
+  { id: 'mantello', cat: CAT_TOOLS, n: 'Mantello di pelliccia', cost: { pelliccia: 2, legna: 1 }, once: true, d: 'Di notte perdi calore alla metà della velocità.' },
+  { id: 'maglione', cat: CAT_TOOLS, n: 'Maglione di lana', cost: { lana: 3 }, once: true, d: 'Un altro strato: perdi calore il 40% più piano, e si somma al mantello.' },
+  { id: 'falo', cat: CAT_FIRE, place: 40, n: 'Falò', cost: { legna: 5, pietra: 3 }, d: 'Scalda, cuoce la carne e tiene lontani i lupi. Brucia per circa due minuti e mezzo.' },
+  { id: 'rifugio', cat: CAT_FIRE, place: 60, n: 'Rifugio', cost: { legna: 15, pietra: 6 }, d: 'Di notte ci dormi dentro e ti svegli al mattino, al sicuro.' },
+  { id: 'casa', cat: CAT_FARM, place: 75, n: 'Casa di legno', cost: { legna: 30, pietra: 15 }, d: 'Dentro fa sempre caldo, la finestra fa luce, i lupi stanno alla larga e di notte ci dormi fino al mattino.' },
+  { id: 'recinto', cat: CAT_FARM, place: 34, n: 'Recinto', cost: { legna: 2 }, d: 'Un palo di staccionata. Mettine diversi in fila: si uniscono da soli. Lupi e animali non passano, tu sì.' },
+  { id: 'orto', cat: CAT_FARM, place: 50, n: 'Orto', cost: { legna: 3, bacche: 3 }, d: 'Pianti le bacche come semi: dopo un minuto e mezzo raccogli 3 verdure, poi l’orto ricresce da solo.' },
+  { id: 'pozzo', cat: CAT_FARM, place: 50, n: 'Pozzo', cost: { pietra: 12, legna: 4 }, d: 'Acqua da bere sempre a portata di mano, anche lontano dal lago.' },
+  { id: 'lanterna', cat: CAT_FARM, place: 30, n: 'Lanterna', cost: { legna: 2, pietra: 3 }, d: 'Una luce fissa che non si spegne mai e tiene lontani i lupi.' },
+  { id: 'trappola', cat: CAT_FARM, place: 40, n: 'Trappola per conigli', cost: { legna: 4, pietra: 1 }, d: 'Più o meno ogni minuto cattura un coniglio da sola.' },
+  { id: 'pollaio', cat: CAT_PETS, place: 60, n: 'Pollaio con 2 galline', cost: { legna: 10, bacche: 6 }, d: 'Ogni gallina fa un uovo circa ogni minuto.' },
+  { id: 'ovile', cat: CAT_PETS, place: 60, n: 'Ovile con una pecora', cost: { legna: 12, pietra: 4, bacche: 4 }, d: 'Ogni tanto puoi tosarla: con 3 di lana cuci un maglione.' },
+  { id: 'stalla', cat: CAT_PETS, place: 70, n: 'Stalla con una mucca', cost: { legna: 20, pietra: 8, bacche: 8 }, d: 'Ogni minuto e mezzo puoi mungerla: il latte toglie la sete e sazia.' },
+  { id: 'cuccia', cat: CAT_PETS, place: 40, n: 'Cuccia con un cane', cost: { legna: 6, carne: 2 }, once: true, d: 'Il cane ti segue ovunque e morde i lupi che ti si avvicinano.' },
 ];
+const SOLID_R = { casa: 36, recinto: 7, pozzo: 16, lanterna: 6, pollaio: 22, ovile: 26, stalla: 30, cuccia: 12 };
+const PET_TIME = { gallina: 65, pecora: 100, mucca: 90 };
 const GOALS = [
   { t: 'Raccogli 5 legna abbattendo un albero', p: () => [S.c.legna, 5], xp: 15 },
   { t: 'Costruisci un’ascia di pietra', p: () => [S.tools.ascia ? 1 : 0, 1], xp: 20 },
@@ -243,11 +265,14 @@ const GOALS = [
   { t: 'Costruisci un rifugio', p: () => [S.c.shelter, 1], xp: 60 },
   { t: 'Sopravvivi fino al giorno 5', p: () => [Math.min(day(), 5), 5], xp: 100 },
   { t: 'Sopravvivi fino al giorno 10', p: () => [Math.min(day(), 10), 10], xp: 200 },
+  { t: 'Costruisci un pollaio', p: () => [S.c.pollaio || 0, 1], xp: 40 },
+  { t: 'Raccogli le verdure dall’orto', p: () => [S.c.harvest || 0, 1], xp: 40 },
+  { t: 'Costruisci una casa di legno', p: () => [S.c.casa || 0, 1], xp: 120 },
 ];
 const CAUSE = { fame: 'Sei morto di fame.', sete: 'Sei morto di sete.', freddo: 'Il gelo della notte ti ha preso.', lupo: 'I lupi ti hanno sbranato.', veleno: 'Un fungo velenoso ti è stato fatale.', carne: 'La carne cruda ti ha avvelenato.' };
 
 /* ---------- Mondo ---------- */
-let S, ground, objects, fires, shelters, animals = [], floats = [], parts = [];
+let S, ground, objects, fires, shelters, builds = [], pets = [], fenceSegs = [], animals = [], floats = [], parts = [];
 function genGround(seed) {
   const rng = mulberry(seed);
   ground = new Uint8Array(N * N);
@@ -290,17 +315,19 @@ function genObjects(seed) {
 function freshRun(seedArg) {
   const seed = seedArg || Math.floor(Math.random() * 1e9);
   genGround(seed);
-  objects = genObjects(seed); fires = []; shelters = []; animals = [];
+  objects = genObjects(seed); fires = []; shelters = []; builds = []; pets = []; animals = [];
   S = { v: 1, seed, time: 0, lastDay: 1, x: N / 2 * T, y: N / 2 * T, face: 0, hp: 100, maxHp: 100, food: 85, water: 80, warm: 100,
     level: 1, xp: 0, torch: 0, inv: { legna: 0, pietra: 0, bacche: 2, funghi: 0, carne: 0, cotta: 0, pelliccia: 0 },
     tools: {}, goal: 0, c: { legna: 0, bacche: 0, drink: 0, fires: 0, rabbit: 0, cook: 0, wolf: 0, shelter: 0, crafted: 0 }, cause: 'fame', dead: false };
+  fillInv();
   for (let i = 0; i < 14; i++) spawnRabbit(true);
 }
-function serialize() { return JSON.stringify({ S, objects, fires, shelters }); }
+const fillInv = () => { for (const k of Object.keys(ITEMS)) S.inv[k] = S.inv[k] || 0; };
+function serialize() { return JSON.stringify({ S, objects, fires, shelters, builds, pets }); }
 function restore(json) {
   try {
     const o = JSON.parse(json); if (!o || !o.S || o.S.v !== 1 || o.S.dead) return false;
-    S = o.S; objects = o.objects; fires = o.fires; shelters = o.shelters; animals = [];
+    S = o.S; objects = o.objects; fires = o.fires; shelters = o.shelters; builds = o.builds || []; pets = o.pets || []; animals = []; fillInv();
     genGround(S.seed); for (let i = 0; i < 14; i++) spawnRabbit(true);
     return true;
   } catch (e) { return false; }
@@ -339,7 +366,16 @@ function spawnWolf() {
 }
 
 /* ---------- Movimento e collisioni ---------- */
-const solids = () => objects.filter(o => o.k === 'tree' || o.k === 'rock').concat(fires.map(f => ({ x: f.x, y: f.y, r: 14 })), shelters.map(s => ({ x: s.x, y: s.y, r: 24 })));
+function solids() {
+  const posts = builds.filter(b => b.t === 'recinto');
+  fenceSegs = [];
+  for (let i = 0; i < posts.length; i++) for (let j = i + 1; j < posts.length; j++)
+    if (dist(posts[i], posts[j]) < 64) fenceSegs.push({ x1: posts[i].x, y1: posts[i].y, x2: posts[j].x, y2: posts[j].y });
+  return objects.filter(o => o.k === 'tree' || o.k === 'rock').concat(
+    fires.map(f => ({ x: f.x, y: f.y, r: 14 })), shelters.map(s => ({ x: s.x, y: s.y, r: 24 })),
+    builds.filter(b => SOLID_R[b.t]).map(b => ({ x: b.x, y: b.y, r: SOLID_R[b.t] })));
+}
+const repellers = () => allFires().concat(builds.filter(b => b.t === 'casa' || b.t === 'lanterna'));
 let solidCache = [];
 function moveEnt(e, dx, dy, r) {
   const nx = clamp(e.x + dx, T, WPX - T), ny = clamp(e.y + dy, T, WPX - T);
@@ -349,6 +385,14 @@ function moveEnt(e, dx, dy, r) {
     const ddx = e.x - o.x, ddy = e.y - o.y; if (Math.abs(ddx) > 60 || Math.abs(ddy) > 60) continue;
     const d = Math.hypot(ddx, ddy), m = o.r + r * 0.7;
     if (d < m && d > 0.01) { e.x = o.x + ddx / d * m; e.y = o.y + ddy / d * m; }
+  }
+  if (e === S) return;
+  for (const g of fenceSegs) {
+    const vx = g.x2 - g.x1, vy = g.y2 - g.y1, t = clamp(((e.x - g.x1) * vx + (e.y - g.y1) * vy) / (vx * vx + vy * vy), 0, 1);
+    const px = g.x1 + vx * t, py = g.y1 + vy * t, dx = e.x - px, dy = e.y - py;
+    if (Math.abs(dx) > 60 || Math.abs(dy) > 60) continue;
+    const d = Math.hypot(dx, dy), m = r * 0.7 + 3;
+    if (d < m && d > 0.01) { e.x = px + dx / d * m; e.y = py + dy / d * m; }
   }
 }
 function nearWater() {
@@ -378,7 +422,8 @@ function getAction() {
   if (ob) return { label: { tree: 'Taglia l’albero', rock: 'Spacca la roccia', bush: 'Raccogli bacche', mush: 'Raccogli il fungo' }[ob.k], target: ob, cd: 0.45, run: () => gather(ob) };
   const pp = S.community && Net.room ? nearPeer() : null, gi = pp && GIFTABLE.find(k => S.inv[k] > 0);
   if (pp && gi) return { label: `Regala 1 ${ITEMS[gi].n.toLowerCase()} a ${nameOf(pp)}`, cd: 0.8, run: () => giveGift(pp) };
-  const sh = nearest(shelters, S, 70);
+  const farm = farmAction(); if (farm) return farm;
+  const sh = nearest(shelters.concat(builds.filter(b => b.t === 'casa')), S, 80);
   if (sh && isNight()) return { label: 'Dormi fino all’alba', target: sh, cd: 1, run: sleep };
   if (nearWater()) return { label: 'Bevi', cd: 0.6, run: drink };
   if (fire && S.inv.legna > 0 && fire.life < FIRE_MAX - 20) return { label: 'Ravviva il fuoco', target: fire, cd: 0.6, run: () => { S.inv.legna--; fire.life = Math.min(FIRE_MAX, fire.life + 45); floatTxt(fire.x, fire.y - 30, '+45 s di fuoco', '#ffb27a'); } };
@@ -420,7 +465,7 @@ function sleep() {
   S.food = Math.max(0, S.food - 20); S.water = Math.max(0, S.water - 20);
   S.hp = Math.min(S.maxHp, S.hp + 30); S.warm = 100;
   animals = animals.filter(a => a.k !== 'wolf');
-  toast('Hai dormito nel rifugio. È mattina.');
+  toast('Hai dormito al sicuro. È mattina.');
 }
 function eat(id) {
   const it = ITEMS[id]; if (!it.eat || S.inv[id] <= 0 || S.dead) return;
@@ -435,23 +480,197 @@ function canCraft(r) { return Object.entries(r.cost).every(([k, v]) => S.inv[k] 
 function craft(id) {
   const r = RECIPES.find(r => r.id === id); if (!r || !canCraft(r)) return;
   let spot = null;
-  if (id === 'falo' || id === 'rifugio') {
-    const off = id === 'falo' ? 40 : 60;
-    for (const a of [S.face, S.face + 1.57, S.face - 1.57, S.face + 3.14]) {
-      const x = S.x + Math.cos(a) * off, y = S.y + Math.sin(a) * off;
-      if (!waterAt(x, y, 16) && x > T && y > T && x < WPX - T && y < WPX - T) { spot = { x, y }; break; }
+  if (r.place) {
+    const off = r.place;
+    // Cerca un posto libero: prima davanti a te, poi ai lati e più lontano, senza sovrapporsi ad altre costruzioni
+    const need = SOLID_R[id] || 20;
+    const placed = builds.map(b => ({ x: b.x, y: b.y, r: SOLID_R[b.t] || 22, fence: b.t === 'recinto' }))
+      .concat(shelters.map(s => ({ x: s.x, y: s.y, r: 26 })), fires.map(f => ({ x: f.x, y: f.y, r: 16 })));
+    const free = (x, y) => placed.every(o => dist(o, { x, y }) > (id === 'recinto' && o.fence ? 20 : o.r + need + 6));
+    outer: for (const k of [1, 1.6, 2.3]) for (const a of [0, 0.6, -0.6, 1.2, -1.2, 1.9, -1.9, 3.14]) {
+      const x = S.x + Math.cos(S.face + a) * off * k, y = S.y + Math.sin(S.face + a) * off * k;
+      if (!waterAt(x, y, 16) && x > T && y > T && x < WPX - T && y < WPX - T && free(x, y)) { spot = { x, y }; break outer; }
     }
-    if (!spot) { toast('Qui non c’è spazio. Spostati lontano dall’acqua.', 'bad'); return; }
+    if (!spot) { toast('Qui non c’è spazio. Spostati in un punto libero, lontano dall’acqua e dalle altre costruzioni.', 'bad'); return; }
   }
   Object.entries(r.cost).forEach(([k, v]) => S.inv[k] -= v);
   S.c.crafted++; addXP(10);
   if (id === 'falo') { fires.push({ x: spot.x, y: spot.y, life: FIRE_MAX }); S.c.fires++; }
   else if (id === 'rifugio') { shelters.push({ x: spot.x, y: spot.y }); S.c.shelter++; }
   else if (id === 'torcia') S.torch += 90;
+  else if (r.place) addBuild(id, spot);
   else S.tools[id] = true;
   solidCache = solids();
   toast(`Hai costruito: ${r.n}`);
   closeSheet();
+}
+
+/* ---------- Casa, campagna e animali domestici ---------- */
+const PET_NAME = { gallina: 'la gallina', pecora: 'la pecora', mucca: 'la mucca' };
+function spawnPet(k, x, y) {
+  const a = Math.random() * 6.28;
+  pets.push({ k, x: x + Math.cos(a) * 30, y: y + Math.sin(a) * 30 + 20, hx: x, hy: y + 20, rt: PET_TIME[k] || 0, ready: false, vx: 0, vy: 0, t: 0, cd: 0, r: k === 'mucca' ? 12 : k === 'gallina' ? 6 : 9 });
+}
+function addBuild(id, spot) {
+  const b = { t: id, x: spot.x, y: spot.y };
+  if (id === 'orto') b.g = 0;
+  if (id === 'trappola') { b.c = 55; b.caught = false; }
+  builds.push(b);
+  S.c[id] = (S.c[id] || 0) + 1;
+  if (id === 'pollaio') { spawnPet('gallina', b.x, b.y); spawnPet('gallina', b.x, b.y); }
+  if (id === 'ovile') spawnPet('pecora', b.x, b.y);
+  if (id === 'stalla') spawnPet('mucca', b.x, b.y);
+  if (id === 'cuccia') { S.tools.cuccia = true; pets.push({ k: 'cane', x: S.x + 20, y: S.y + 10, vx: 0, vy: 0, t: 0, cd: 0, r: 9, hop: 0 }); }
+}
+function farmAction() {
+  let best = null, bd = 44;
+  for (const p of pets) { if (p.k === 'cane' || !p.ready) continue; const d = dist(p, S); if (d < bd) { bd = d; best = p; } }
+  if (best) {
+    const what = { gallina: ['Raccogli l’uovo', 'uova', 1], pecora: ['Tosa la pecora', 'lana', 2], mucca: ['Mungi la mucca', 'latte', 1] }[best.k];
+    return { label: what[0], target: best, cd: 0.6, run: () => {
+      S.inv[what[1]] += what[2]; best.ready = false; best.rt = PET_TIME[best.k] * (0.8 + Math.random() * 0.4); addXP(3);
+      floatTxt(best.x, best.y - 26, `+${what[2]} ${ITEMS[what[1]].n.toLowerCase()}`, '#f4ead8');
+    } };
+  }
+  for (const b of builds) {
+    const d = dist(b, S);
+    if (b.t === 'orto' && b.g >= 1 && d < 50) return { label: 'Raccogli le verdure', target: b, cd: 0.6, run: () => { S.inv.verdure += 3; b.g = 0; S.c.harvest = (S.c.harvest || 0) + 1; addXP(6); floatTxt(b.x, b.y - 24, '+3 verdure', '#f0a050'); } };
+    if (b.t === 'trappola' && b.caught && d < 44) return { label: 'Prendi il coniglio dalla trappola', target: b, cd: 0.6, run: () => { S.inv.carne++; b.caught = false; b.c = 50 + Math.random() * 25; S.c.rabbit++; addXP(4); floatTxt(b.x, b.y - 22, '+1 carne'); } };
+    if (b.t === 'pozzo' && d < 52) return { label: 'Bevi dal pozzo', target: b, cd: 0.6, run: drink };
+  }
+  const dog = pets.find(p => p.k === 'cane' && dist(p, S) < 36);
+  if (dog && !isNight()) return { label: 'Accarezza il cane', target: dog, cd: 1, run: () => floatTxt(dog.x, dog.y - 24, '♥', '#ff8a9a') };
+  return null;
+}
+function updateFarm(dt, dk) {
+  for (const b of builds) {
+    if (b.t === 'orto' && b.g < 1) b.g = Math.min(1, b.g + dt / 90);
+    if (b.t === 'trappola' && !b.caught) { b.c -= dt; if (b.c <= 0) b.caught = true; }
+  }
+  for (const p of pets) {
+    p.t -= dt; p.cd -= dt; p.hop = (p.hop || 0) + dt * 10;
+    if (p.k === 'cane') {
+      let wolf = null, wd = 230;
+      for (const a of animals) if (a.k === 'wolf') { const d = dist(a, S); if (d < wd) { wd = d; wolf = a; } }
+      const tgt = wolf || S, d = dist(p, tgt) || 1, sp = wolf ? 175 : 160;
+      if (wolf && d < 28) {
+        p.vx = p.vy = 0;
+        if (p.cd <= 0) {
+          p.cd = 0.8; wolf.hp -= 8; wolf.hurt = 0.2; chips(wolf.x, wolf.y, '#c43c3c', 3);
+          if (wolf.hp <= 0) { animals.splice(animals.indexOf(wolf), 1); S.inv.carne += 2; S.inv.pelliccia++; S.c.wolf++; addXP(15); floatTxt(wolf.x, wolf.y - 24, 'Il cane ha battuto un lupo!', '#ffd36a'); }
+        }
+      } else if (wolf || d > 60) { p.vx = (tgt.x - p.x) / d * sp; p.vy = (tgt.y - p.y) / d * sp; }
+      else { p.vx *= 0.8; p.vy *= 0.8; }
+    } else {
+      if (!p.ready) { p.rt -= dt; if (p.rt <= 0) p.ready = true; }
+      const dh = Math.hypot(p.x - p.hx, p.y - p.hy);
+      if (dh > 110) { p.vx = (p.hx - p.x) / dh * 35; p.vy = (p.hy - p.y) / dh * 35; }
+      else if (p.t <= 0) {
+        p.t = rnd(1.5, 4);
+        const a = Math.random() * 6.28, s = Math.random() < 0.45 ? 0 : (p.k === 'gallina' ? 30 : 18);
+        p.vx = Math.cos(a) * s; p.vy = Math.sin(a) * s;
+      }
+    }
+    moveEnt(p, p.vx * dt, p.vy * dt, p.r);
+  }
+}
+function drawFarm(o, t) {
+  const c = ctx, x = o.x, y = o.y, night = darkness() > 0.4;
+  const shadow = (w, h = w * 0.3) => { c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(x + 2, y + 4, w, h, 0, 0, 6.28); c.fill(); };
+  const hut = (w, h, wall, roof) => {
+    shadow(w * 0.6);
+    c.fillStyle = wall; c.fillRect(x - w / 2, y - h, w, h);
+    c.fillStyle = roof; c.beginPath(); c.moveTo(x - w / 2 - 5, y - h); c.lineTo(x, y - h - h * 0.75); c.lineTo(x + w / 2 + 5, y - h); c.closePath(); c.fill();
+  };
+  const ready = () => { const by = y - 26 - Math.abs(Math.sin(t * 4)) * 3; c.fillStyle = '#ffd36a'; c.beginPath(); c.arc(x, by, 6, 0, 6.28); c.fill(); c.fillStyle = '#2a1206'; c.fillRect(x - 1, by - 4, 2, 5); c.fillRect(x - 1, by + 2, 2, 2); };
+  switch (o.k) {
+    case 'b_casa':
+      hut(66, 40, '#7a5434', '#5b2f22');
+      c.strokeStyle = '#5e3f25'; c.lineWidth = 1.5; for (let i = 1; i < 4; i++) { c.beginPath(); c.moveTo(x - 33, y - i * 10); c.lineTo(x + 33, y - i * 10); c.stroke(); }
+      c.fillStyle = '#3a2416'; c.fillRect(x - 7, y - 22, 14, 22);
+      c.fillStyle = night ? '#ffd36a' : '#9fc9d8'; c.fillRect(x + 13, y - 30, 12, 10); c.fillRect(x - 25, y - 30, 12, 10);
+      c.fillStyle = '#5e5e5e'; c.fillRect(x + 14, y - 64, 8, 16);
+      break;
+    case 'b_recinto':
+      c.fillStyle = '#6b4a2e'; c.fillRect(x - 3, y - 20, 6, 22); c.fillStyle = '#8a6440'; c.fillRect(x - 3, y - 20, 6, 3);
+      break;
+    case 'b_orto': {
+      c.fillStyle = '#5a3d26'; c.fillRect(x - 24, y - 16, 48, 30);
+      c.strokeStyle = '#47301e'; c.lineWidth = 2; for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(x - 22, y - 9 + i * 10); c.lineTo(x + 22, y - 9 + i * 10); c.stroke(); }
+      const g = o.g || 0;
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 4; j++) {
+        const px = x - 16 + j * 11, py = y - 9 + i * 10, h = 2 + g * 8;
+        c.fillStyle = '#5fa04a'; c.beginPath(); c.moveTo(px, py); c.lineTo(px - 3, py - h); c.lineTo(px + 3, py - h); c.closePath(); c.fill();
+        if (g >= 1) { c.fillStyle = '#f08a2e'; c.beginPath(); c.arc(px, py + 1, 2.5, 0, 6.28); c.fill(); }
+      }
+      break;
+    }
+    case 'b_pozzo':
+      shadow(18);
+      c.fillStyle = '#8f979c'; c.beginPath(); c.ellipse(x, y - 4, 16, 9, 0, 0, 6.28); c.fill();
+      c.fillStyle = '#235a6e'; c.beginPath(); c.ellipse(x, y - 5, 10, 5, 0, 0, 6.28); c.fill();
+      c.fillStyle = '#6b4a2e'; c.fillRect(x - 15, y - 30, 3, 26); c.fillRect(x + 12, y - 30, 3, 26);
+      c.fillStyle = '#7a3b2a'; c.beginPath(); c.moveTo(x - 20, y - 28); c.lineTo(x, y - 40); c.lineTo(x + 20, y - 28); c.closePath(); c.fill();
+      break;
+    case 'b_lanterna':
+      c.fillStyle = '#4a3222'; c.fillRect(x - 2, y - 28, 4, 30);
+      c.fillStyle = '#ffd36a'; c.fillRect(x - 5, y - 38, 10, 10); c.strokeStyle = '#3a2416'; c.lineWidth = 1.5; c.strokeRect(x - 5, y - 38, 10, 10);
+      break;
+    case 'b_trappola':
+      shadow(12);
+      c.fillStyle = '#7a5434'; c.fillRect(x - 12, y - 12, 24, 14); c.fillStyle = '#5e3f25'; c.fillRect(x - 12, y - 12, 24, 3);
+      if (o.ref && o.ref.caught) { c.fillStyle = '#a58a6a'; c.fillRect(x - 3, y - 22, 2.5, 10); c.fillRect(x + 1, y - 21, 2.5, 9); }
+      break;
+    case 'b_pollaio': hut(36, 22, '#a0522d', '#7a2e1e'); c.fillStyle = '#2a1a10'; c.fillRect(x - 5, y - 12, 10, 12); break;
+    case 'b_ovile': hut(48, 26, '#8b6b4a', '#5b4532'); c.fillStyle = '#2a1a10'; c.fillRect(x - 7, y - 16, 14, 16); break;
+    case 'b_stalla':
+      hut(58, 32, '#9b3d2e', '#5b2f22');
+      c.strokeStyle = '#f2ece0'; c.lineWidth = 2; c.strokeRect(x - 10, y - 22, 20, 22); c.beginPath(); c.moveTo(x - 10, y - 22); c.lineTo(x + 10, y); c.moveTo(x + 10, y - 22); c.lineTo(x - 10, y); c.stroke();
+      break;
+    case 'b_cuccia': hut(24, 14, '#8a6440', '#a0522d'); c.fillStyle = '#1a120c'; c.beginPath(); c.arc(x, y - 4, 5, Math.PI, 0); c.fill(); break;
+    case 'gallina': {
+      const hop = Math.abs(Math.sin(o.hop)) * (Math.hypot(o.vx, o.vy) > 5 ? 2 : 0), dir = Math.sign(o.vx || 1);
+      shadow(7, 2.5);
+      c.fillStyle = '#f4f1ea'; c.beginPath(); c.ellipse(x, y - 6 - hop, 7, 5.5, 0, 0, 6.28); c.fill();
+      c.beginPath(); c.arc(x + dir * 5, y - 11 - hop, 3.5, 0, 6.28); c.fill();
+      c.fillStyle = '#d6334a'; c.fillRect(x + dir * 4 - 1, y - 16 - hop, 3, 3);
+      c.fillStyle = '#e0a43a'; c.beginPath(); c.moveTo(x + dir * 8, y - 12 - hop); c.lineTo(x + dir * 11, y - 11 - hop); c.lineTo(x + dir * 8, y - 10 - hop); c.fill();
+      if (o.ready) ready();
+      break;
+    }
+    case 'pecora': {
+      const dir = Math.sign(o.vx || 1);
+      shadow(12, 4);
+      c.fillStyle = '#2a2a2a'; c.fillRect(x - 7, y - 6, 3, 8); c.fillRect(x + 4, y - 6, 3, 8);
+      c.fillStyle = o.ready ? '#f7f4ee' : '#d8d2c4';
+      for (const [dx, dy, r] of [[-5, -10, 6], [3, -11, 6.5], [0, -6, 6], [-8, -6, 4.5], [7, -6, 4.5]]) { c.beginPath(); c.arc(x + dx, y + dy, r, 0, 6.28); c.fill(); }
+      c.fillStyle = '#2a2a2a'; c.beginPath(); c.ellipse(x + dir * 11, y - 11, 4, 3.5, 0, 0, 6.28); c.fill();
+      if (o.ready) ready();
+      break;
+    }
+    case 'mucca': {
+      const dir = Math.sign(o.vx || 1);
+      shadow(16, 5);
+      c.fillStyle = '#f2ece0'; c.fillRect(x - 12, y - 8, 4, 10); c.fillRect(x + 8, y - 8, 4, 10);
+      c.beginPath(); c.ellipse(x, y - 13, 15, 8, 0, 0, 6.28); c.fill();
+      c.fillStyle = '#2a2a2a'; c.beginPath(); c.ellipse(x - 5, y - 15, 4, 3, 0.4, 0, 6.28); c.ellipse(x + 6, y - 11, 3.5, 2.5, -0.3, 0, 6.28); c.fill();
+      c.fillStyle = '#f2ece0'; c.beginPath(); c.ellipse(x + dir * 15, y - 16, 5.5, 5, 0, 0, 6.28); c.fill();
+      c.fillStyle = '#e8a0a0'; c.beginPath(); c.ellipse(x + dir * 19, y - 14, 3, 2.5, 0, 0, 6.28); c.fill();
+      if (o.ready) ready();
+      break;
+    }
+    case 'cane': {
+      const dir = Math.sign(o.vx || (S.x - x) || 1), step = Math.hypot(o.vx, o.vy) > 10 ? Math.sin(o.hop * 1.5) * 2 : 0;
+      shadow(10, 3);
+      c.fillStyle = '#9a6a3c'; c.fillRect(x - 7, y - 6, 3, 7 + step); c.fillRect(x + 4, y - 6, 3, 7 - step);
+      c.beginPath(); c.ellipse(x, y - 9, 9, 5, 0, 0, 6.28); c.fill();
+      c.beginPath(); c.arc(x + dir * 9, y - 13, 4.5, 0, 6.28); c.fill();
+      c.fillStyle = '#6e4a28'; c.beginPath(); c.ellipse(x + dir * 7, y - 16, 2, 3.5, 0.3 * dir, 0, 6.28); c.fill();
+      c.strokeStyle = '#9a6a3c'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x - dir * 8, y - 10); c.lineTo(x - dir * 13, y - 15 + Math.sin(t * 12) * 2); c.stroke();
+      c.fillStyle = '#d6334a'; c.fillRect(x - 1, y - 14, 3, 2);
+      break;
+    }
+  }
 }
 
 /* ---------- Input ---------- */
@@ -513,11 +732,11 @@ function update(dt) {
   G.action = getAction();
   if (G.act && G.action && G.cd <= 0) { G.cd = G.action.cd; if (G.action.target) S.face = Math.atan2(G.action.target.y - S.y, G.action.target.x - S.x); G.action.run(); renderPack(); }
   // bisogni
-  const nearFire = allFires().some(f => dist(f, S) < 150), nearShelter = shelters.some(s => dist(s, S) < 80);
+  const nearFire = allFires().some(f => dist(f, S) < 150) || builds.some(b => b.t === 'casa' && dist(b, S) < 85), nearShelter = shelters.some(s => dist(s, S) < 80);
   S.food -= dt * 100 / 230;
   S.water -= dt * 100 / 170 * (S.tools.borraccia ? 0.65 : 1);
   if (nearFire) S.warm += dt * 18;
-  else if (dk > 0.45) S.warm -= dt * 100 / 75 * (S.tools.mantello ? 0.5 : 1) * (nearShelter ? 0.4 : 1);
+  else if (dk > 0.45) S.warm -= dt * 100 / 75 * (S.tools.mantello ? 0.5 : 1) * (S.tools.maglione ? 0.6 : 1) * (nearShelter ? 0.4 : 1);
   else S.warm += dt * 5;
   S.food = clamp(S.food, 0, 100); S.water = clamp(S.water, 0, 100); S.warm = clamp(S.warm, 0, 100);
   if (S.food <= 0) { S.hp -= dt * 2; S.cause = 'fame'; }
@@ -537,6 +756,7 @@ function update(dt) {
   if (wolves < wolvesWanted && Math.random() < dt * 0.4) spawnWolf();
   if (animals.filter(a => a.k === 'rabbit').length < 12 && Math.random() < dt * 0.1) spawnRabbit(false);
   for (const a of animals) updateAnimal(a, dt, dk);
+  updateFarm(dt, dk);
   animals = animals.filter(a => !(a.k === 'wolf' && dk < 0.3 && dist(a, S) > 650));
   // effetti
   for (const f of floats) { f.y -= dt * 30; f.life -= dt; }
@@ -555,7 +775,7 @@ function updateAnimal(a, dt, dk) {
     if (d < 130) { const k = 125 / d; a.vx = (a.x - S.x) * k + rnd(-40, 40); a.vy = (a.y - S.y) * k + rnd(-40, 40); }
     else if (a.t <= 0) { a.t = rnd(1, 3); const ang = Math.random() * 6.28, s = Math.random() < 0.4 ? 0 : 40; a.vx = Math.cos(ang) * s; a.vy = Math.sin(ang) * s; }
   } else {
-    const fire = nearest(allFires(), a, 170);
+    const fire = nearest(repellers(), a, 170);
     if (dk < 0.3) { const k = 110 / (d || 1); a.vx = (a.x - S.x) * k; a.vy = (a.y - S.y) * k; }
     else if (fire) { const df = dist(a, fire) || 1; a.vx = (a.x - fire.x) / df * 90; a.vy = (a.y - fire.y) / df * 90; }
     else if (d < 420) {
@@ -624,9 +844,13 @@ function draw(t) {
   for (const f of Net.fires) if (inView(f)) vis.push({ ...f, k: 'fire' });
   for (const p of Net.peers) { const pr = p.presence || {}; if (isNum(pr.x) && isNum(pr.y)) { const o = { k: 'peer', x: clamp(pr.x, 0, WPX), y: clamp(pr.y, 0, WPX), fc: isNum(pr.fc) ? pr.fc : 0, mv: !!pr.mv, dead: !!pr.dead }; if (inView(o)) vis.push(o); } }
   for (const s of shelters) if (inView(s)) vis.push({ ...s, k: 'shelter' });
+  for (const b of builds) if (inView(b)) vis.push({ ...b, k: 'b_' + b.t, ref: b });
+  for (const p of pets) if (inView(p)) vis.push(p);
   for (const a of animals) if (inView(a)) vis.push(a);
   vis.push({ k: 'player', x: S.x, y: S.y });
   vis.sort((a, b) => a.y - b.y);
+  ctx.strokeStyle = '#8a6440'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  for (const g of fenceSegs) for (const h of [-12, -5]) { ctx.beginPath(); ctx.moveTo(g.x1, g.y1 + h); ctx.lineTo(g.x2, g.y2 + h); ctx.stroke(); }
   for (const o of vis) drawThing(o, t);
   for (const p of parts) { ctx.fillStyle = p.col; ctx.globalAlpha = clamp(p.life * 2, 0, 1); ctx.fillRect(p.x - 2, p.y - 2, 4, 4); }
   ctx.globalAlpha = 1;
@@ -639,6 +863,7 @@ function draw(t) {
     dctx.globalCompositeOperation = 'destination-out';
     const light = (x, y, r) => { const g = dctx.createRadialGradient(x, y, r * 0.15, x, y, r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); dctx.fillStyle = g; dctx.beginPath(); dctx.arc(x, y, r, 0, 6.28); dctx.fill(); };
     light(S.x - camX, S.y - camY, S.torch > 0 ? 250 + Math.sin(t * 9) * 6 : 85);
+    for (const b of builds) if (b.t === 'casa' || b.t === 'lanterna') light(b.x - camX, b.y - camY - 12, b.t === 'casa' ? 125 : 165);
     for (const f of allFires()) light(f.x - camX, f.y - camY, 120 + Math.min(1, f.life / 30) * 90 + Math.sin(t * 11 + f.x) * 8);
     ctx.drawImage(dark, 0, 0, W, H);
     // occhi dei lupi che brillano nel buio
@@ -720,6 +945,8 @@ function drawThing(o, t) {
     c.beginPath(); c.moveTo(o.x + dir * 11, o.y - 21); c.lineTo(o.x + dir * 13, o.y - 29); c.lineTo(o.x + dir * 17, o.y - 22); c.fill();
     c.beginPath(); c.moveTo(o.x - dir * 16, o.y - 13); c.quadraticCurveTo(o.x - dir * 28, o.y - 14, o.x - dir * 26, o.y - 4); c.lineTo(o.x - dir * 16, o.y - 9); c.fill();
     c.fillStyle = '#ffd65a'; c.fillRect(o.x + dir * 16 - 1, o.y - 18, 2.5, 2);
+  } else if (o.k.startsWith('b_') || PET_TIME[o.k] || o.k === 'cane') {
+    drawFarm(o, t);
   } else if (o.k === 'peer') {
     const bob = o.mv ? Math.sin(t * 14) * 1.5 : 0;
     c.globalAlpha = o.dead ? 0.4 : 1;
@@ -774,11 +1001,12 @@ function hud() {
   $('vig').style.boxShadow = low < 0.35 ? `inset 0 0 ${80 + (0.35 - low) * 300}px rgba(229,72,77,${0.5 - low})` : S.warm < 25 ? 'inset 0 0 90px rgba(150,200,255,.45)' : 'none';
 }
 function renderPack() {
-  const eatable = ['bacche', 'funghi', 'cotta', 'carne'];
+  const eatable = ['bacche', 'funghi', 'cotta', 'carne', 'uova', 'latte', 'verdure'];
+  const core = new Set(['legna', 'pietra', 'bacche', 'cotta', 'carne']);
   $('pack').innerHTML = `<button class="btn" id="craftBtn" type="button"><svg viewBox="0 0 24 24"><path d="M14 4l6 6-3 3-6-6zM11 7l-8 8 3 3 8-8"/></svg>Costruisci</button>` +
     `<button class="btn ghost" id="saveBtn" type="button"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg>Salva</button>` +
     `<button class="btn ghost" id="comBtn" type="button"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-4 3-6 6-6s6 2 6 6M15 14c3 0 6 2 6 5"/></svg>Comunità</button>` +
-    ['legna', 'pietra', 'pelliccia', ...eatable].map(k => {
+    ['legna', 'pietra', 'pelliccia', 'lana', ...eatable].filter(k => core.has(k) || S.inv[k] > 0).map(k => {
       const n = S.inv[k] || 0;
       return `<button class="item ${ITEMS[k].eat ? 'eat' : ''} ${n ? '' : 'zero'}" data-item="${k}" type="button" title="${ITEMS[k].n}">${ICON[k]}<b>${n}</b>${ITEMS[k].eat ? '' : ITEMS[k].n}</button>`;
     }).join('');
@@ -951,13 +1179,13 @@ async function slotAction(act, id) {
 }
 $('sheetClose').addEventListener('click', closeSheet);
 function renderSheet() {
-  $('sheetBody').innerHTML = `<p style="margin:0;color:var(--lichen)">Il gioco è in pausa mentre costruisci. Falò e rifugio vengono piazzati accanto a te.</p>` +
-    RECIPES.map(r => {
+  $('sheetBody').innerHTML = `<p style="margin:0;color:var(--lichen)">Il gioco è in pausa mentre costruisci. Le costruzioni vengono piazzate davanti a te, nella direzione in cui guardi.</p>` +
+    [...new Set(RECIPES.map(r => r.cat))].map(c => `<div class="label">${c}</div>` + RECIPES.filter(r => r.cat === c).map(r => {
       const owned = r.once && S.tools[r.id];
       const cost = Object.entries(r.cost).map(([k, v]) => `<span class="${S.inv[k] >= v ? '' : 'miss'}">${ICON[k]}${Math.min(S.inv[k], v)}/${v}</span>`).join('');
       return `<div class="recipe ${owned ? 'owned' : ''}"><h4>${r.n}</h4><p>${r.d}</p><div class="cost">${owned ? '<span>Già costruito</span>' : cost}</div>
         <button class="btn" data-craft="${r.id}" type="button" ${canCraft(r) ? '' : 'disabled'}>Costruisci</button></div>`;
-    }).join('') +
+    }).join('')).join('') +
     `<div class="label">Diario degli obiettivi</div><ul class="goals">${GOALS.map((g, i) => `<li class="${i < S.goal ? 'done' : i === S.goal ? 'cur' : ''}"><span>${g.t}</span><em>+${g.xp} XP</em></li>`).join('')}</ul>`;
 }
 $('sheetBody').addEventListener('click', e => {
@@ -1033,7 +1261,7 @@ function intro(resumed) {
 
 /* ---------- Comunità: bosco condiviso, chat, regali, classifica ---------- */
 const COMMUNITY_SEED = 424242;
-const GIFTABLE = ['cotta', 'bacche', 'carne', 'legna'];
+const GIFTABLE = ['cotta', 'verdure', 'uova', 'latte', 'bacche', 'carne', 'legna'];
 const Net = { lobby: null, room: null, joining: false, joinFailed: false, user: null, peers: [], names: {}, chat: [], bubbles: {}, fires: [], lastPres: '', myPeer: null, giftAt: {}, board: null };
 const isNum = v => typeof v === 'number' && isFinite(v);
 const allFires = () => Net.fires.length ? fires.concat(Net.fires) : fires;
