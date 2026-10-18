@@ -1155,7 +1155,7 @@ function drawCommunity() {
   const peers = Net.peers;
   let forest;
   if (S.community) {
-    forest = Net.room
+    forest = Net.room && Net.room.connected()
       ? `<div class="slot"><h4>Sei nel bosco della comunità</h4><div class="meta">${peers.length ? `Qui ora ${peers.length === 1 ? 'c’è 1 altro esploratore' : `ci sono ${peers.length} esploratori`}. Avvicinati a qualcuno per regalargli cibo o legna con il pulsante arancione, e scaldatevi allo stesso falò.` : 'Per ora sei da solo. Quando arriva qualcuno lo vedi nel bosco con la giacca blu e il suo nome sopra la testa.'}</div>
         ${peers.length ? `<ul class="people">${peers.map(p => { const pr = p.presence || {}; return `<li><b>${esc(nameOf(p))}</b><span>${pr.dead ? 'è caduto' : `giorno ${isNum(pr.d) ? pr.d : '?'} · liv. ${isNum(pr.lv) ? pr.lv : '?'}`}${isNum(pr.x) && isNum(pr.y) ? ` · a ${Math.round(Math.hypot(pr.x - S.x, pr.y - S.y) / T)} passi da te` : ''}</span></li>`; }).join('')}</ul>` : ''}</div>`
       : `<div class="slot"><h4>Bosco della comunità</h4><div class="meta">${Net.joinFailed || !Net.lobby ? 'In questa vista non riesco a collegarti agli altri. Apri il gioco da claude.ai con il tuo account: per giocare insieme il gioco deve esserti stato condiviso.' : 'Mi sto collegando agli altri esploratori…'}</div></div>`;
