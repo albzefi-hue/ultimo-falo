@@ -85,6 +85,7 @@ button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
 .recipe h4{margin:0;font-size:17px;font-weight:800}
 .recipe p{margin:0;color:var(--lichen);font-size:14px;grid-column:1}
 .recipe.owned{opacity:.6}
+.recipe p.need{color:var(--food);font-weight:700}
 .cost{display:flex;gap:6px;flex-wrap:wrap;grid-column:1}
 .cost span{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:800;background:#0f1a13;border:1px solid var(--line);border-radius:99px;padding:2px 9px 2px 4px;font-variant-numeric:tabular-nums}
 .cost span.miss{color:var(--hp);border-color:#6a2a2c}
@@ -320,7 +321,7 @@ const ITEMS = {
   pesce: { n: 'Pesce crudo', eat: { food: 8, hp: -3 } },
   pescecotto: { n: 'Pesce arrosto', eat: { food: 28, water: 2, hp: 6 } },
 };
-const CAT_TOOLS = 'Attrezzi e vestiti', CAT_FIRE = 'Fuoco e riparo', CAT_FARM = 'Casa e campagna', CAT_PETS = 'Animali domestici';
+const CAT_TOOLS = 'Attrezzi e vestiti', CAT_FIRE = 'Fuoco e riparo', CAT_BENCH = 'Al banco da lavoro', CAT_FARM = 'Casa e campagna', CAT_PETS = 'Animali domestici';
 const RECIPES = [
   { id: 'ascia', cat: CAT_TOOLS, n: 'Ascia di pietra', cost: { legna: 3, pietra: 2 }, once: true, d: 'Abbatti gli alberi in due colpi invece di cinque.' },
   { id: 'piccone', cat: CAT_TOOLS, n: 'Piccone', cost: { legna: 3, pietra: 3 }, once: true, d: 'Spacchi le rocce in due colpi invece di sei.' },
@@ -333,6 +334,11 @@ const RECIPES = [
   { id: 'maglione', cat: CAT_TOOLS, n: 'Maglione di lana', cost: { lana: 3 }, once: true, d: 'Un altro strato: perdi calore il 40% più piano, e si somma al mantello.' },
   { id: 'falo', cat: CAT_FIRE, place: 40, n: 'Falò', cost: { legna: 5, pietra: 3 }, d: 'Scalda, cuoce la carne e tiene lontani i lupi. Brucia per circa due minuti e mezzo.' },
   { id: 'rifugio', cat: CAT_FIRE, place: 60, n: 'Rifugio', cost: { legna: 15, pietra: 6 }, d: 'Di notte ci dormi dentro e ti svegli al mattino, al sicuro.' },
+  { id: 'banco', cat: CAT_FIRE, place: 46, n: 'Banco da lavoro', cost: { legna: 8, pietra: 2 }, d: 'Vicino al banco le costruzioni costano un quarto in meno e puoi fare gli attrezzi della sezione “Al banco da lavoro”.' },
+  { id: 'carriola', cat: CAT_BENCH, bench: true, n: 'Carriola', cost: { legna: 10, pietra: 4 }, once: true, d: 'Porti via di più: ogni albero dà 4 legna invece di 3 e ogni roccia 3 pietre invece di 2.' },
+  { id: 'cesto', cat: CAT_BENCH, bench: true, n: 'Cesto di vimini', cost: { legna: 4, bacche: 2 }, once: true, d: 'Ogni volta che raccogli da un cespuglio prendi 2 bacche invece di 1.' },
+  { id: 'stivali', cat: CAT_BENCH, bench: true, n: 'Stivali di pelliccia', cost: { pelliccia: 2, legna: 1 }, once: true, d: 'Cammini e corri il 20% più veloce, anche per scappare dai lupi.' },
+  { id: 'lancia2', cat: CAT_BENCH, bench: true, req: 'lancia', n: 'Lancia affilata', cost: { legna: 4, pietra: 4 }, once: true, d: 'Affili la lancia sulla pietra: colpi una volta e mezza più forti. Serve avere già la lancia.' },
   { id: 'casa', cat: CAT_FARM, place: 75, n: 'Casa di legno', cost: { legna: 30, pietra: 15 }, d: 'Dentro fa sempre caldo, la finestra fa luce, i lupi stanno alla larga e di notte ci dormi fino al mattino.' },
   { id: 'recinto', cat: CAT_FARM, place: 34, n: 'Recinto', cost: { legna: 2 }, d: 'Un palo di staccionata. Mettine diversi in fila: si uniscono da soli. Lupi e animali non passano, tu sì.' },
   { id: 'orto', cat: CAT_FARM, place: 50, n: 'Orto', cost: { legna: 3, bacche: 3 }, d: 'Pianti le bacche come semi: dopo un minuto e mezzo raccogli 3 verdure, poi l’orto ricresce da solo.' },
@@ -344,7 +350,7 @@ const RECIPES = [
   { id: 'stalla', cat: CAT_PETS, place: 70, n: 'Stalla con una mucca', cost: { legna: 20, pietra: 8, bacche: 8 }, d: 'Ogni minuto e mezzo puoi mungerla: il latte toglie la sete e sazia.' },
   { id: 'cuccia', cat: CAT_PETS, place: 40, n: 'Cuccia con un cane', cost: { legna: 6, carne: 2 }, once: true, d: 'Il cane ti segue ovunque e morde i lupi che ti si avvicinano.' },
 ];
-const SOLID_R = { casa: 36, recinto: 7, pozzo: 16, lanterna: 6, pollaio: 22, ovile: 26, stalla: 30, cuccia: 12 };
+const SOLID_R = { banco: 18, casa: 36, recinto: 7, pozzo: 16, lanterna: 6, pollaio: 22, ovile: 26, stalla: 30, cuccia: 12 };
 const PET_TIME = { gallina: 65, pecora: 100, mucca: 90 };
 const GOALS = [
   { t: 'Raccogli 5 legna abbattendo un albero', p: () => [S.c.legna, 5], xp: 15 },
@@ -534,12 +540,12 @@ function gather(o) {
   o.sh = 0.25; G.swing = 0.25;
   if (o.k === 'tree') {
     o.hp -= S.tools.ascia ? 3 : 1; chips(o.x, o.y - 10, '#d9a86c');
-    if (o.hp <= 0) { remove(o); S.inv.legna += 3; S.c.legna += 3; addXP(4); floatTxt(o.x, o.y - 30, '+3 legna'); }
+    if (o.hp <= 0) { const n = S.tools.carriola ? 4 : 3; remove(o); S.inv.legna += n; S.c.legna += n; addXP(4); floatTxt(o.x, o.y - 30, `+${n} legna`); }
   } else if (o.k === 'rock') {
     o.hp -= S.tools.piccone ? 3 : 1; chips(o.x, o.y - 6, '#b7bec2');
-    if (o.hp <= 0) { remove(o); S.inv.pietra += 2; addXP(4); floatTxt(o.x, o.y - 24, '+2 pietra'); }
+    if (o.hp <= 0) { const n = S.tools.carriola ? 3 : 2; remove(o); S.inv.pietra += n; addXP(4); floatTxt(o.x, o.y - 24, `+${n} pietra`); }
   } else if (o.k === 'bush') {
-    o.berries--; S.inv.bacche++; S.c.bacche++; addXP(1); floatTxt(o.x, o.y - 20, '+1 bacca', '#ff8090');
+    const n = S.tools.cesto ? 2 : 1; o.berries--; S.inv.bacche += n; S.c.bacche += n; addXP(1); floatTxt(o.x, o.y - 20, n > 1 ? `+${n} bacche` : '+1 bacca', '#ff8090');
     if (o.berries <= 0) o.rg = 70;
   } else if (o.k === 'mush') { remove(o); S.inv.funghi++; addXP(1); floatTxt(o.x, o.y - 16, '+1 fungo'); }
 }
@@ -549,7 +555,7 @@ function remove(o) {
 }
 function hitAnimal(a) {
   G.swing = 0.25;
-  a.hp -= S.tools.lancia ? 18 : 6; a.hurt = 0.2;
+  a.hp -= S.tools.lancia2 ? 27 : S.tools.lancia ? 18 : 6; a.hurt = 0.2;
   const d = dist(a, S) || 1; moveEnt(a, (a.x - S.x) / d * 26, (a.y - S.y) / d * 26, a.r);
   chips(a.x, a.y, '#c43c3c', 4);
   if (a.hp <= 0) {
@@ -589,7 +595,17 @@ function eat(id) {
   else floatTxt(S.x, S.y - 40, `${it.n}: +${it.eat.food} fame`, '#f0c36a');
   renderPack();
 }
-function canCraft(r) { return Object.entries(r.cost).every(([k, v]) => S.inv[k] >= v) && !(r.once && S.tools[r.id]); }
+const nearBench = () => builds.concat(Net.remoteBuilds).some(b => b.t === 'banco' && dist(b, S) < 100);
+// vicino al banco da lavoro le costruzioni da piazzare costano un quarto in meno
+function costOf(r) {
+  if (!r.place || r.id === 'banco' || !nearBench()) return r.cost;
+  return Object.fromEntries(Object.entries(r.cost).map(([k, v]) => [k, Math.max(1, Math.ceil(v * 0.75))]));
+}
+function canCraft(r) {
+  if (r.bench && !nearBench()) return false;
+  if (r.req && !S.tools[r.req]) return false;
+  return Object.entries(costOf(r)).every(([k, v]) => S.inv[k] >= v) && !(r.once && S.tools[r.id]);
+}
 function craft(id) {
   const r = RECIPES.find(r => r.id === id); if (!r || !canCraft(r)) return;
   let spot = null;
@@ -606,7 +622,7 @@ function craft(id) {
     }
     if (!spot) { toast('Qui non c’è spazio. Spostati in un punto libero, lontano dall’acqua e dalle altre costruzioni.', 'bad'); return; }
   }
-  Object.entries(r.cost).forEach(([k, v]) => S.inv[k] -= v);
+  Object.entries(costOf(r)).forEach(([k, v]) => S.inv[k] -= v);
   S.c.crafted++; addXP(10);
   if (id === 'falo') { fires.push({ x: spot.x, y: spot.y, life: FIRE_MAX }); S.c.fires++; }
   else if (id === 'rifugio') { shelters.push({ x: spot.x, y: spot.y }); S.c.shelter++; }
@@ -742,6 +758,13 @@ function drawFarm(o, t) {
     case 'b_stalla':
       hut(58, 32, '#9b3d2e', '#5b2f22');
       c.strokeStyle = '#f2ece0'; c.lineWidth = 2; c.strokeRect(x - 10, y - 22, 20, 22); c.beginPath(); c.moveTo(x - 10, y - 22); c.lineTo(x + 10, y); c.moveTo(x + 10, y - 22); c.lineTo(x - 10, y); c.stroke();
+      break;
+    case 'b_banco':
+      shadow(22);
+      c.fillStyle = '#5e3f25'; c.fillRect(x - 20, y - 14, 4, 16); c.fillRect(x + 16, y - 14, 4, 16);
+      c.fillStyle = '#8a6440'; c.fillRect(x - 24, y - 20, 48, 8); c.fillStyle = '#a07a50'; c.fillRect(x - 24, y - 20, 48, 2.5);
+      c.fillStyle = '#b7bec2'; c.beginPath(); c.moveTo(x - 18, y - 22); c.lineTo(x - 4, y - 22); c.lineTo(x - 4, y - 25); c.lineTo(x - 18, y - 27); c.closePath(); c.fill();
+      c.fillStyle = '#4a3222'; c.fillRect(x + 6, y - 24, 12, 3); c.fillStyle = '#7d858a'; c.fillRect(x + 14, y - 28, 5, 8);
       break;
     case 'b_cuccia': hut(24, 14, '#8a6440', '#a0522d'); c.fillStyle = '#1a120c'; c.beginPath(); c.arc(x, y - 4, 5, Math.PI, 0); c.fill(); break;
     case 'gallina': {
@@ -1062,7 +1085,7 @@ function drawMap() {
   const mark = (b, remote) => {
     if (b.t === 'recinto') return;
     const big = b.t === 'casa' || b.t === 'stalla' || b.t === 'rifugio', r = big ? 4.5 : 3;
-    c.fillStyle = { casa: '#9a6a3c', stalla: '#9b3d2e', pollaio: '#a0522d', ovile: '#8b6b4a', orto: '#6a8a3a', pozzo: '#8f979c', lanterna: '#ffd36a', trappola: '#7a5434', cuccia: '#8a6440', rifugio: '#6b4a2e' }[b.t] || '#9a6a3c';
+    c.fillStyle = { banco: '#a07a50', casa: '#9a6a3c', stalla: '#9b3d2e', pollaio: '#a0522d', ovile: '#8b6b4a', orto: '#6a8a3a', pozzo: '#8f979c', lanterna: '#ffd36a', trappola: '#7a5434', cuccia: '#8a6440', rifugio: '#6b4a2e' }[b.t] || '#9a6a3c';
     c.fillRect(b.x * k - r, b.y * k - r, r * 2, r * 2);
     if (remote) { c.strokeStyle = '#4fa3e8'; c.lineWidth = 1.5; c.strokeRect(b.x * k - r - 1, b.y * k - r - 1, r * 2 + 2, r * 2 + 2); }
   };
@@ -1318,7 +1341,7 @@ function update(dt) {
   G.moving = ml > 0.15;
   if (G.moving) {
     if (ml > 1) { mx /= ml; my /= ml; }
-    const sp = 150 * (S.hp < 25 ? 0.75 : 1);
+    const sp = 150 * (S.hp < 25 ? 0.75 : 1) * (S.tools.stivali ? 1.2 : 1);
     S.face = Math.atan2(my, mx);
     moveEnt(S, mx * sp * dt, my * sp * dt, 12);
   }
@@ -1794,10 +1817,12 @@ async function slotAction(act, id) {
 $('sheetClose').addEventListener('click', closeSheet);
 function renderSheet() {
   $('sheetBody').innerHTML = `<p style="margin:0;color:var(--lichen)">Il gioco è in pausa mentre costruisci. Le costruzioni vengono piazzate davanti a te, nella direzione in cui guardi.</p>` +
+    (nearBench() ? '<p class="where"><span>Sei al <b>banco da lavoro</b>: le costruzioni costano un quarto in meno e puoi fare gli attrezzi speciali.</span></p>' : '') +
     [...new Set(RECIPES.map(r => r.cat))].map(c => `<div class="label">${c}</div>` + RECIPES.filter(r => r.cat === c).map(r => {
       const owned = r.once && S.tools[r.id];
-      const cost = Object.entries(r.cost).map(([k, v]) => `<span class="${S.inv[k] >= v ? '' : 'miss'}">${ICON[k]}${Math.min(S.inv[k], v)}/${v}</span>`).join('');
-      return `<div class="recipe ${owned ? 'owned' : ''}"><h4>${r.n}</h4><p>${r.d}</p><div class="cost">${owned ? '<span>Già costruito</span>' : cost}</div>
+      const cost = Object.entries(costOf(r)).map(([k, v]) => `<span class="${S.inv[k] >= v ? '' : 'miss'}">${ICON[k]}${Math.min(S.inv[k], v)}/${v}</span>`).join('');
+      const why = owned ? '' : r.bench && !nearBench() ? '<p class="need">Si fa solo vicino a un banco da lavoro.</p>' : r.req && !S.tools[r.req] ? '<p class="need">Prima costruisci la lancia.</p>' : '';
+      return `<div class="recipe ${owned ? 'owned' : ''}"><h4>${r.n}</h4><p>${r.d}</p>${why}<div class="cost">${owned ? '<span>Già costruito</span>' : cost}</div>
         <button class="btn" data-craft="${r.id}" type="button" ${canCraft(r) ? '' : 'disabled'}>Costruisci</button></div>`;
     }).join('')).join('') +
     `<div class="label">Diario degli obiettivi</div><ul class="goals">${GOALS.map((g, i) => `<li class="${i < S.goal ? 'done' : i === S.goal ? 'cur' : ''}"><span>${g.t}</span><em>+${g.xp} XP</em></li>`).join('')}</ul>`;
@@ -1911,7 +1936,7 @@ async function joinForest() {
   finally { Net.joining = false; }
 }
 function leaveForest() { if (Net.room) { Net.room.leave().catch(() => {}); Net.room = null; Net.serverOffset = undefined; G.clockToast = false; Net.peers = []; Net.fires = []; Net.remoteBuilds = []; Net.remotePets = []; solidCache = solids(); } }
-const VILLAGE_KINDS = ['casa', 'recinto', 'orto', 'pozzo', 'lanterna', 'trappola', 'pollaio', 'ovile', 'stalla', 'cuccia', 'rifugio'];
+const VILLAGE_KINDS = ['banco', 'casa', 'recinto', 'orto', 'pozzo', 'lanterna', 'trappola', 'pollaio', 'ovile', 'stalla', 'cuccia', 'rifugio'];
 // Il villaggio di ognuno sta sul server: lo vede anche chi entra dopo. Il proprio resta nel salvataggio.
 function shareBuilds() {
   if (!S || !S.community || !Net.room) return;

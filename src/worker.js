@@ -9,7 +9,7 @@ const GIFTABLE = ["cotta", "pescecotto", "verdure", "uova", "latte", "bacche", "
 const PRESENCE_TTL = 10_000;
 const EVENT_TTL = 5 * 60_000;
 const RATE_LIMIT = 300; // richieste al minuto per indirizzo IP
-const VILLAGE_KINDS = ["casa", "recinto", "orto", "pozzo", "lanterna", "trappola", "pollaio", "ovile", "stalla", "cuccia", "rifugio"];
+const VILLAGE_KINDS = ["banco", "casa", "recinto", "orto", "pozzo", "lanterna", "trappola", "pollaio", "ovile", "stalla", "cuccia", "rifugio"];
 const WORLD_PX = 2560;
 
 const json = (data, status = 200) =>

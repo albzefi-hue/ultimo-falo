@@ -25,7 +25,7 @@ Gioco di sopravvivenza nel bosco, in italiano, per browser (telefono e computer)
 ## Funzioni del gioco
 
 - Bisogni: salute, fame, sete, calore. Giorno di 240 s (06:00 all'inizio), notte con lupi.
-- Costruisci (categorie): attrezzi e vestiti (ascia, piccone, lancia, borraccia, torcia, mantello, maglione, canna da pesca, canna robusta), fuoco e riparo (falò, rifugio), casa e campagna (casa, recinto, orto, pozzo, lanterna, trappola), animali domestici (pollaio, ovile, stalla, cuccia con cane).
+- Costruisci (categorie): attrezzi e vestiti (ascia, piccone, lancia, borraccia, torcia, mantello, maglione, canna da pesca, canna robusta), fuoco e riparo (falò, rifugio, banco da lavoro), al banco da lavoro (carriola, cesto di vimini, stivali di pelliccia, lancia affilata: si fanno solo entro 100 px da un banco, anche di un amico; vicino al banco le costruzioni da piazzare costano il 25% in meno), casa e campagna (casa, recinto, orto, pozzo, lanterna, trappola), animali domestici (pollaio, ovile, stalla, cuccia con cane).
 - Pesca: scena del "Lago dell'Alba" (lancio, abboccata, tensione della lenza), 11 specie.
 - Scuola del bosco con il maestro Gufo vicino all'inizio: Tabellina di Manu (10 domande, +5 s per errore), indovinello del giorno, missione del bosco. Si rinnova a ogni nuovo giorno.
 - Mappa (pulsante Mappa / tasto M), obiettivi, livelli ed esperienza.
